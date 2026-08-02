@@ -1,0 +1,23 @@
+{
+  "name": "sounde",
+  "productName": "Sounde",
+  "version": "0.1.0",
+  "description": "Reproductor de audio de escritorio para Windows con acrilico real de DWM",
+  "author": "MxrningStar",
+  "license": "MIT",
+  "private": true,
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "music-metadata": "^11.14.0"
+  },
+  "devDependencies": {
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3"
+  }
+}
