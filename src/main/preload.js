@@ -1,6 +1,6 @@
 'use strict';
 
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 /**
  * Unico puente entre la pagina y el proceso principal.
@@ -39,6 +39,42 @@ contextBridge.exposeInMainWorld('sounde', {
   // --- Vidrio -------------------------------------------------------------
   backdrop: {
     apply: (mode) => ipcRenderer.invoke('backdrop:apply', mode),
+  },
+
+  // --- Biblioteca ---------------------------------------------------------
+  library: {
+    all: () => ipcRenderer.invoke('library:all'),
+    folders: () => ipcRenderer.invoke('library:folders'),
+    scan: () => ipcRenderer.invoke('library:scan'),
+    cancelScan: () => ipcRenderer.invoke('library:cancel-scan'),
+    addFolder: () => ipcRenderer.invoke('library:add-folder'),
+    removeFolder: (folder) => ipcRenderer.invoke('library:remove-folder', folder),
+    openFiles: () => ipcRenderer.invoke('library:open-files'),
+    addPaths: (paths) => ipcRenderer.invoke('library:add-paths', paths),
+    reveal: (file) => ipcRenderer.invoke('library:reveal', file),
+    onProgress: (h) => on('library:progress', h),
+    onChanged: (h) => on('library:changed', h),
+
+    /**
+     * Desde Electron 32 los objetos File ya no traen `.path`. La unica via
+     * legitima para saber que se solto es esta, y solo existe en el preload.
+     */
+    pathsFromDrop: (fileList) => {
+      const salida = [];
+      for (const file of fileList) {
+        try {
+          const p = webUtils.getPathForFile(file);
+          if (p) salida.push(p);
+        } catch { /* no era un archivo real del disco */ }
+      }
+      return salida;
+    },
+  },
+
+  // --- App ----------------------------------------------------------------
+  app: {
+    info: () => ipcRenderer.invoke('app:info'),
+    onOpenFiles: (h) => on('app:open-files', h),
   },
 
   // --- Entorno ------------------------------------------------------------
