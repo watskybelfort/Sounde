@@ -1,0 +1,144 @@
+/* ============================================================================
+ * SOUNDE · VIDRIO
+ *
+ * Las tres perillas de abajo son lo unico que hace falta tocar para cambiar
+ * como se ve el vidrio. Todo lo demas se deriva de ellas.
+ *
+ * IMPORTANTE, porque es lo que confunde a todo el mundo:
+ * el desenfoque del escritorio NO lo pone este archivo. Lo pone DWM detras
+ * de la ventana entera (ajuste `backdrop` en Ajustes). Aqui solo se decide
+ * cuanta veladura pinta la pagina ENCIMA de ese desenfoque.
+ *
+ * Si el vidrio se ve turbio: baja --transparencia (esta capa), no el Alpha
+ * del backdrop (la de DWM).
+ * Si se ve tan claro que no se lee: subela.
+ * ==========================================================================*/
+
+:root {
+  /* ══════════ PERILLA 1 · TRANSPARENCIA ══════════
+     Cuanta veladura pinta la UI encima del acrilico.
+     0.20 = vidrio muy limpio, se lee peor sobre fondos claros
+     0.42 = equilibrio (por defecto)
+     0.70 = casi opaco, el escritorio apenas se intuye              */
+  --transparencia: 0.42;
+
+  /* ══════════ PERILLA 2 · TINTE ══════════
+     Color del vidrio, en RGB sin comas (lo exige color-mix/rgb()).
+     Se sobreescribe solo cuando el color adaptativo esta encendido:
+     entonces sale de la caratula que suena.                        */
+  --tinte: 14 17 22;
+
+  /* ══════════ PERILLA 3 · ACENTO ══════════
+     Color de la barra de progreso, focos y estados activos.        */
+  --acento: 122 162 247;
+
+  /* --- Derivados. No hace falta tocarlos. ------------------------------- */
+
+  /* Veladura extra que se suma sola cuando la ventana pierde el foco. */
+  --velo-extra: 0;
+  --velo: calc(var(--transparencia) + var(--velo-extra));
+
+  /* Superficies de chrome. Solo se tinta lo que NO se solapa: barra
+     superior, sidebar y transporte. Si se tintaran tambien los
+     contenedores anidados, las alfas se acumulan, el resultado tira a
+     negro y tapa el acrilico que tanto costo conseguir. */
+  --vidrio-1: rgb(var(--tinte) / calc(var(--velo) * 0.55));
+  --vidrio-2: rgb(var(--tinte) / calc(var(--velo) * 0.82));
+  --vidrio-3: rgb(var(--tinte) / calc(var(--velo) * 1.15));
+
+  /* Realces: la luz que hace que el vidrio parezca vidrio y no un panel
+     de color. Son blancos muy tenues, nunca solidos. */
+  --realce-borde: rgb(255 255 255 / 0.10);
+  --realce-borde-fuerte: rgb(255 255 255 / 0.16);
+  --realce-superior: rgb(255 255 255 / 0.07);
+  --hover: rgb(255 255 255 / 0.055);
+  --pulsado: rgb(255 255 255 / 0.10);
+  --seleccion: rgb(var(--acento) / 0.18);
+
+  /* Texto */
+  --texto: rgb(255 255 255 / 0.95);
+  --texto-2: rgb(255 255 255 / 0.66);
+  --texto-3: rgb(255 255 255 / 0.42);
+  --texto-acento: rgb(var(--acento));
+
+  /* Sombras. Sobre vidrio tienen que ser largas y suaves: una sombra
+     corta y dura se lee como un borde sucio. */
+  --sombra-1: 0 2px 8px rgb(0 0 0 / 0.24);
+  --sombra-2: 0 12px 36px rgb(0 0 0 / 0.38);
+  --sombra-3: 0 24px 64px rgb(0 0 0 / 0.48);
+
+  --radio-1: 8px;
+  --radio-2: 12px;
+  --radio-3: 18px;
+  --radio-full: 999px;
+
+  /* Curvas de Windows 11. La de salida es mas corta que la de entrada:
+     desaparecer rapido, aparecer con calma. */
+  --ease-out: cubic-bezier(0, 0, 0, 1);
+  --ease-in-out: cubic-bezier(0.6, 0, 0.2, 1);
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 340ms;
+
+  /* Transicion del color adaptativo. Larga a proposito: el tinte tiene que
+     derivar de un tema a otro, no parpadear. */
+  --dur-paleta: 900ms;
+}
+
+/* El backdrop del sistema se apaga solo cuando la ventana pierde el foco.
+   No es un fallo del tema: es como se comporta el acrilico de Windows. Al
+   desenfocar subimos un punto la veladura propia para que el contraste no
+   se desplome y parezca que el tema se rompio. */
+:root[data-focused='false'] {
+  --velo-extra: 0.16;
+}
+
+/* Sin backdrop del sistema la pagina tiene que pintar su propio fondo, o se
+   ve el negro plano de Chromium. */
+:root[data-backdrop='none'] body {
+  background: linear-gradient(160deg, rgb(var(--tinte) / 0.98), rgb(8 10 14 / 0.99));
+}
+
+/* --- Superficies reutilizables ------------------------------------------ */
+
+.vidrio {
+  background: var(--vidrio-2);
+  border: 1px solid var(--realce-borde);
+  border-radius: var(--radio-2);
+  box-shadow: var(--sombra-1);
+}
+
+/* Menus, modales y tooltips SI llevan backdrop-filter: flotan sobre la UI
+   de la propia pagina, asi que debajo hay pixeles reales que difuminar.
+   En el resto de la app seria puro gasto de GPU sin efecto. */
+.flotante {
+  background: rgb(var(--tinte) / 0.72);
+  backdrop-filter: blur(32px) saturate(1.6);
+  border: 1px solid var(--realce-borde-fuerte);
+  border-radius: var(--radio-3);
+  box-shadow: var(--sombra-3);
+}
+
+/* Linea de luz superior: el truco que separa una superficie de vidrio de un
+   rectangulo de color. */
+.brillo-superior {
+  position: relative;
+}
+
+.brillo-superior::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--realce-superior) 20%, var(--realce-superior) 80%, transparent);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+    --dur-3: 0ms;
+    --dur-paleta: 0ms;
+  }
+}

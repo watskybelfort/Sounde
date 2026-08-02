@@ -1,0 +1,137 @@
+/* ============================================================================
+ * SOUNDE · BASE
+ * Reset, tipografia y las reglas que dejan pasar el acrilico.
+ * ==========================================================================*/
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+/* La regla que sostiene todo el tema: si la raiz pinta opaco, DWM sigue
+   componiendo el acrilico pero queda tapado por la propia pagina y el
+   resultado es un panel gris. Nada de `background: #000` aqui. */
+html,
+body {
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--texto);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+  cursor: default;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+button {
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+::selection {
+  background: rgb(var(--acento) / 0.35);
+}
+
+/* --- Foco visible ------------------------------------------------------- */
+/* Solo con teclado: el anillo permanente sobre vidrio ensucia mucho. */
+:focus-visible {
+  outline: 2px solid rgb(var(--acento) / 0.9);
+  outline-offset: 2px;
+  border-radius: var(--radio-1);
+}
+
+/* --- Barras de desplazamiento ------------------------------------------- */
+/* Finas y sin pista: una pista opaca corta el vidrio en vertical. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.18) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.14);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: var(--radio-full);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 0.26);
+  background-clip: content-box;
+}
+
+/* --- Utilidades --------------------------------------------------------- */
+
+.arrastrable {
+  -webkit-app-region: drag;
+}
+
+.no-arrastrable {
+  -webkit-app-region: no-drag;
+}
+
+.truncar {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oculto {
+  display: none !important;
+}
+
+.solo-lectores {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Numeros que no bailan al contar el tiempo. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}

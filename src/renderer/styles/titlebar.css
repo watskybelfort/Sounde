@@ -1,0 +1,105 @@
+/* ============================================================================
+ * SOUNDE · BARRA DE TITULO
+ * Marco propio: Windows no dibuja nada, asi que el arrastre y los botones
+ * son responsabilidad de la pagina.
+ * ==========================================================================*/
+
+.titlebar {
+  position: relative;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding-left: 14px;
+  flex: 0 0 auto;
+  /* La barra NO se tinta. Es la franja donde mas se disfruta el acrilico
+     limpio, y tintarla la separa visualmente del resto sin ganar nada. */
+  background: transparent;
+  -webkit-app-region: drag;
+}
+
+.titlebar__marca {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--texto-2);
+}
+
+.titlebar__logo {
+  width: 16px;
+  height: 16px;
+  color: rgb(var(--acento));
+  transition: color var(--dur-paleta) var(--ease-in-out);
+}
+
+.titlebar__espacio {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+/* Titulo centrado: lo que suena, no el nombre de la app. */
+.titlebar__ahora {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  height: 40px;
+  max-width: 42%;
+  font-size: 12px;
+  color: var(--texto-3);
+  pointer-events: none;
+}
+
+.titlebar__controles {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar__btn {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 100%;
+  color: var(--texto-2);
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 10px;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+.titlebar__btn:hover {
+  background: var(--hover);
+  color: var(--texto);
+}
+
+.titlebar__btn:active {
+  background: var(--pulsado);
+}
+
+/* Rojo solo en el hover de cerrar, como manda Windows. */
+.titlebar__btn--cerrar:hover {
+  background: #c42b1c;
+  color: #fff;
+}
+
+.titlebar__btn--cerrar:active {
+  background: #b0271a;
+}
+
+/* En mini-player la barra se encoge y se queda solo cerrar + salir. */
+:root[data-mini='true'] .titlebar {
+  height: 32px;
+}
+
+:root[data-mini='true'] .titlebar__btn {
+  width: 38px;
+}

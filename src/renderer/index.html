@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es" data-focused="true" data-backdrop="acrylic" data-mini="false">
+<head>
+  <meta charset="utf-8">
+  <!-- CSP estricta: sin 'unsafe-inline'. Por eso en el codigo no hay ni un
+       atributo style="" ni un <style> suelto: todo lo dinamico se hace por
+       CSSOM (el.style.setProperty), que la CSP si permite. -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none';
+                 script-src 'self';
+                 style-src 'self';
+                 img-src 'self' data: blob: sounde-art:;
+                 media-src 'self' sounde-file:;
+                 font-src 'self';
+                 connect-src 'self' sounde-art: sounde-file:">
+  <title>Sounde</title>
+  <link rel="stylesheet" href="styles/acrylic.css">
+  <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/titlebar.css">
+  <link rel="stylesheet" href="styles/probe.css">
+</head>
+<body>
+
+  <header class="titlebar">
+    <div class="titlebar__marca">
+      <svg class="titlebar__logo" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M2 8h1.4M5 5v6M8 2.6v10.8M11 5v6M13.6 8H15"
+              stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+      <span>Sounde</span>
+    </div>
+
+    <div class="titlebar__ahora truncar" id="titulo-ahora">Vidrio en verificacion</div>
+
+    <div class="titlebar__espacio"></div>
+
+    <div class="titlebar__controles">
+      <button class="titlebar__btn" id="btn-minimizar" title="Minimizar" aria-label="Minimizar">&#xE921;</button>
+      <button class="titlebar__btn" id="btn-maximizar" title="Maximizar" aria-label="Maximizar">&#xE922;</button>
+      <button class="titlebar__btn titlebar__btn--cerrar" id="btn-cerrar" title="Cerrar" aria-label="Cerrar">&#xE8BB;</button>
+    </div>
+  </header>
+
+  <main class="probe">
+    <section class="probe__panel vidrio brillo-superior">
+      <h1 class="probe__titulo">Vidrio</h1>
+      <p class="probe__texto">
+        El desenfoque de esta ventana lo compone DWM. Si detras se ve el
+        escritorio difuminado y no un panel gris plano, el acrilico es real.
+      </p>
+      <dl class="probe__datos">
+        <div><dt>Backdrop</dt><dd id="dato-backdrop">—</dd></div>
+        <div><dt>Foco</dt><dd id="dato-foco">—</dd></div>
+        <div><dt>Electron</dt><dd id="dato-electron">—</dd></div>
+        <div><dt>Chromium</dt><dd id="dato-chromium">—</dd></div>
+      </dl>
+    </section>
+
+    <section class="probe__muestras">
+      <div class="probe__muestra probe__muestra--1"><span>vidrio&nbsp;1</span></div>
+      <div class="probe__muestra probe__muestra--2"><span>vidrio&nbsp;2</span></div>
+      <div class="probe__muestra probe__muestra--3"><span>vidrio&nbsp;3</span></div>
+      <div class="probe__muestra probe__muestra--flotante flotante"><span>flotante</span></div>
+    </section>
+
+    <section class="probe__modos">
+      <span class="probe__etiqueta">Modo de vidrio</span>
+      <div class="probe__botones" id="modos"></div>
+    </section>
+  </main>
+
+  <script type="module" src="js/boot.js"></script>
+</body>
+</html>
