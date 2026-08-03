@@ -43,6 +43,8 @@ export const ICONO = {
   mas: 0xe712,
   renombrar: 0xe8ac,
   papelera: 0xe74d,
+  exportar: 0xede1,
+  importar: 0xe8b5,
   fijar: 0xe718,
   soltar: 0xe77a,
   vaciar: 0xe74d,

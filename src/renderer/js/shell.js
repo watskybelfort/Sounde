@@ -191,6 +191,11 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
           if (nombre) await listas?.renombrar(playlist.id, nombre);
         },
       },
+      {
+        texto: 'Exportar a m3u…',
+        icono: 'exportar',
+        onClick: () => window.sounde.playlists.exportar(playlist.id),
+      },
       { separador: true },
       {
         texto: 'Borrar la lista',
@@ -211,14 +216,41 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
     ], { x: evento.clientX, y: evento.clientY });
   }
 
-  $('#btn-nueva-lista').addEventListener('click', async () => {
-    const nombre = await pedirTexto({
-      titulo: 'Nueva lista',
-      etiqueta: 'Nombre de la lista',
-      valor: 'Lista nueva',
-      aceptar: 'Crear',
-    });
-    if (nombre) await listas?.crear(nombre, []);
+  $('#btn-nueva-lista').addEventListener('click', (evento) => {
+    abrirMenu([
+      {
+        texto: 'Lista nueva…',
+        icono: 'anadir',
+        onClick: async () => {
+          const nombre = await pedirTexto({
+            titulo: 'Nueva lista',
+            etiqueta: 'Nombre de la lista',
+            valor: 'Lista nueva',
+            aceptar: 'Crear',
+          });
+          if (nombre) await listas?.crear(nombre, []);
+        },
+      },
+      {
+        texto: 'Importar un m3u…',
+        icono: 'importar',
+        onClick: async () => {
+          const creadas = await window.sounde.playlists.importar();
+          if (!creadas?.length) return;
+          // Decir cuantas se han quedado por el camino evita la sensacion de
+          // que la importacion "ha ido mal" cuando faltan archivos.
+          const perdidas = creadas.reduce((s, c) => s + (c.enElArchivo - c.encontradas), 0);
+          if (perdidas) {
+            await confirmar({
+              titulo: 'Lista importada',
+              texto: `${perdidas} de las canciones del archivo no estan en el disco y se han quedado fuera.`,
+              aceptar: 'Entendido',
+            });
+          }
+          await refrescar();
+        },
+      },
+    ], { x: evento.clientX, y: evento.clientY });
   });
 
   listas?.on('cambio', () => {

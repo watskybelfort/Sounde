@@ -91,6 +91,8 @@ contextBridge.exposeInMainWorld('sounde', {
     removeAt: (id, indice) => ipcRenderer.invoke('pl:remove-at', id, indice),
     move: (id, desde, hasta) => ipcRenderer.invoke('pl:move', id, desde, hasta),
     setTracks: (id, trackIds) => ipcRenderer.invoke('pl:set-tracks', id, trackIds),
+    exportar: (id) => ipcRenderer.invoke('pl:export', id),
+    importar: () => ipcRenderer.invoke('pl:import'),
     onChange: (h) => on('coll:playlists', h),
   },
 

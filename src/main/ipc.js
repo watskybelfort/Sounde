@@ -6,6 +6,7 @@ const { ipcMain, dialog, shell, app } = require('electron');
 const { applyBackdrop, setMiniPlayer } = require('./window');
 const protocols = require('./protocols');
 const { AUDIO_EXTENSIONS, EQ_BANDS, EQ_PRESETS } = require('./defaults');
+const m3u = require('./m3u');
 
 /**
  * Registra los handlers del proceso principal.
@@ -196,6 +197,58 @@ function registerIpc(ctx) {
 
   ipcMain.handle('pl:set-tracks', conListas((_e, id, trackIds) =>
     collections.setPlaylistTracks(id, trackIds)));
+
+  ipcMain.handle('pl:export', withWindow(async (win, _e, id) => {
+    const playlist = collections.findPlaylist(id);
+    if (!playlist) return null;
+
+    const pistas = playlist.tracks.map((t) => library.get(t)).filter(Boolean);
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: 'Exportar la lista',
+      defaultPath: `${playlist.name.replace(/[\\/:*?"<>|]/g, '_')}.m3u8`,
+      filters: [{ name: 'Listas', extensions: ['m3u8', 'm3u'] }],
+    });
+    if (canceled || !filePath) return null;
+
+    try {
+      return await m3u.escribir(filePath, pistas);
+    } catch (err) {
+      console.error('[m3u] no pude exportar:', err.message);
+      return { error: err.message };
+    }
+  }));
+
+  ipcMain.handle('pl:import', withWindow(async (win) => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      title: 'Importar una lista',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'Listas', extensions: ['m3u8', 'm3u'] }],
+    });
+    if (canceled || !filePaths.length) return [];
+
+    const creadas = [];
+    for (const archivo of filePaths) {
+      let rutas;
+      try {
+        rutas = await m3u.leer(archivo);
+      } catch (err) {
+        console.error('[m3u] no pude leer', archivo, '-', err.message);
+        continue;
+      }
+
+      // Las pistas de la lista importada pueden estar fuera de las carpetas
+      // vigiladas. Se anaden a la biblioteca para que se puedan reproducir:
+      // sin eso, la lista aparece llena de canciones que dan 403.
+      const tracks = await library.addFiles(rutas);
+      const nombre = path.basename(archivo, path.extname(archivo));
+      const lista = collections.createPlaylist(nombre, tracks.map((t) => t.id));
+      creadas.push({ ...lista, encontradas: tracks.length, enElArchivo: rutas.length });
+    }
+
+    emitir('coll:playlists', { playlists: collections.playlists });
+    emitir('library:changed', { total: library.size() });
+    return creadas;
+  }));
 
   // --- Varios -------------------------------------------------------------
   ipcMain.handle('app:info', () => ({
