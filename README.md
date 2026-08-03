@@ -21,6 +21,12 @@ cambió de fecha o de tamaño, así que sobre una biblioteca ya vista el arranqu
 cuesta milisegundos. Canciones, álbumes, artistas, favoritos, recientes y
 listas de reproducción, con importación y exportación en `.m3u`.
 
+**Spotify.** Conectas la cuenta y tus listas y tus me gusta aparecen junto a
+la música local, con una cuenta al lado de cada una: cuántas de esas canciones
+ya tienes en el disco. Las que tienes suenan por el motor de siempre, con
+ecualizador, fundido y visualizador. Las que no, se ven igual pero apagadas.
+Más abajo está [por qué no reproduce de Spotify](#lo-que-no-hace-y-por-qué).
+
 **Letras.** Un `.lrc` al lado del archivo o las etiquetas del propio archivo.
 Si llevan tiempos, la línea que suena se resalta y pulsándola se salta ahí.
 
@@ -46,6 +52,88 @@ npm run dist    # instalador en dist/
 ```
 
 Para trastear sin instalar nada: `npm start`.
+
+---
+
+## Spotify: catálogo sí, audio no
+
+### Lo que no hace, y por qué
+
+**Sounde no reproduce audio de Spotify.** No es que falte por hacer: es una
+decisión, y esta es la razón.
+
+Reproducir una pista de Spotify obliga a pasar por el Web Playback SDK, que
+va cifrado con DRM. Y **el audio bajo EME no se puede meter en
+`createMediaElementSource`**: Chromium no deja tocar esas muestras. Una
+canción de Spotify sonaría sin ecualizador, sin fundido cruzado, sin
+ReplayGain, sin control de velocidad y con el visualizador plano. Es decir,
+sin nada de [el grafo de audio](#el-grafo-de-audio), que es la mitad de este
+programa. Habría dos reproductores con dos comportamientos distintos dentro
+de la misma ventana, y el usuario no tendría forma de saber cuál le va a
+tocar hasta pulsar.
+
+Tampoco descarga nada. Lo que baja Spotify al "descargar" queda cifrado en la
+caché de su propio cliente y no hay API que lo exponga; sacarlo de ahí es
+romper el DRM. Con YouTube pasa parecido por otro camino: se puede leer una
+lista, pero bajar el audio va contra sus términos, así que ese descargador no
+está aquí.
+
+Lo que sí resuelve, que es el problema de verdad: **saber qué te falta.** Una
+lista de Spotify entra, se cruza con tu disco, y te dice qué tienes y qué no.
+Lo que falta lo consigues por donde tú decidas, y en cuanto el archivo cae en
+una carpeta vigilada la lista se completa sola.
+
+### Cómo se conecta
+
+Hace falta un Client ID tuyo, del panel de Spotify, y no viene ninguno puesto.
+En PKCE el Client ID viaja en la URL a la vista de cualquiera, así que
+repartir uno en el instalador significaría que todas las instalaciones
+comparten la misma cuota de la API: con unos cuantos sincronizando a la vez,
+a los demás les empieza a salir `429`. Con el tuyo, tienes la tuya.
+
+En Ajustes → Spotify está la URI de retorno que hay que registrar allí, con
+un botón para copiarla. Es `http://127.0.0.1:8888/callback`, con la IP
+escrita y no `localhost`, porque Spotify ya no admite el nombre.
+
+La autorización se abre en **el navegador del sistema**, no en una ventana de
+Electron. Meterla dentro sería pedirte que escribas la contraseña de Spotify
+en una ventana dibujada por esta aplicación, sin barra de direcciones que
+diga si el sitio es el de verdad y sin que funcione tu gestor de contraseñas.
+Aunque aquí nadie toque nada, esa es exactamente la costumbre que aprovecha
+el phishing.
+
+El token de refresco se guarda cifrado con DPAPI, en su propio archivo y no
+en `settings.json`, que se lee en claro y está pensado para editarlo a mano.
+Si el cifrado no está disponible no se guarda nada: es mejor volver a
+conectar en cada arranque que dejar una credencial de larga vida en el disco.
+
+### Emparejar sin mentir
+
+Los dos errores posibles se ven en pantalla y no cuestan lo mismo. Un falso
+positivo hace que al pulsar suene otra canción; un falso negativo te manda a
+buscar algo que ya tenías. El segundo se arregla solo en cuanto lo miras, así
+que **ante la duda no se empareja.**
+
+Se quitan las coletillas de catálogo (`- Remastered 2011`, `(feat. X)`) y se
+conservan a propósito `(Live)`, `(Remix)` y `(Acoustic)`: son grabaciones
+distintas, no la misma con otro nombre. Y una duración fuera de margen
+descarta en vez de restar puntos — mismo título y mismo artista con dos
+minutos de diferencia no es una etiqueta mal puesta, es otra grabación.
+
+En la lista se distingue la coincidencia exacta de la hecha por parecido. Ese
+enlace lo hicimos nosotros comparando texto, así que si algún día suena algo
+que no toca, ahí es donde se mira para entender por qué.
+
+### Lo que no sale de aquí
+
+Todas las peticiones a Spotify salen del **proceso principal**. La página
+tiene una CSP con `default-src 'none'` y sin `connect-src`; si las llamadas
+salieran del renderer habría que abrirle un agujero a `api.spotify.com`, y ese
+agujero vale para cualquier cosa que llegue a ejecutarse ahí dentro.
+
+Por lo mismo, las carátulas de Spotify se descargan a la caché y se sirven por
+`sounde-art://` en vez de pintar la URL de `i.scdn.co`: así la CSP se queda
+intacta y además se siguen viendo sin conexión.
 
 ---
 
@@ -145,10 +233,19 @@ src/main/         proceso principal
   ipc.js          todos los handlers
   preload.js      el unico puente con la pagina
 
+src/main/spotify/ el catalogo remoto
+  index.js        la unica cara hacia el resto de la app
+  auth.js         OAuth PKCE y el servidor de retorno
+  api.js          Web API: reintentos, 429 y paginacion
+  catalogo.js     traer listas, guardadas y caratulas
+  emparejar.js    cruce con la biblioteca local
+  credenciales.js el token cifrado
+
 src/renderer/     la pagina
   js/player.js    motor de audio (Web Audio)
   js/queue.js     cola, aleatorio y repeticion
   js/shell.js     navegacion y vistas
+  js/spotify.js   la vista del catalogo
   ...
 ```
 
@@ -211,6 +308,17 @@ Algunos ejemplos de lo que hizo falta medir en vez de suponer:
   imagen: en la primera versión estaban los diez a la misma altura mientras
   las etiquetas decían de +6 a −9, y todas las comprobaciones de valores
   pasaban.
+- El PKCE se verificó comprobando que el verificador que se manda al canjear
+  es el que corresponde al reto que salió en la URL. Que los campos estén
+  puestos no prueba nada; que el `SHA-256` cuadre, sí.
+- El orden de "atar el puerto" y "abrir el navegador" salió de una prueba con
+  el puerto ocupado a propósito. Estaba al revés: el usuario concedía los
+  permisos y aterrizaba en un puerto muerto, habiendo dado acceso a su cuenta
+  a cambio de un error.
+- La vista del catálogo se verificó cargando la interfaz de verdad en una
+  ventana y midiendo la geometría, no solo el DOM. Y la primera captura
+  mentía: una ventana con `show: false` no compone, así que devolvía un
+  fotograma viejo mientras el DOM ya tenía la vista nueva.
 
 ---
 
