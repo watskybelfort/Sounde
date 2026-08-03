@@ -9,8 +9,18 @@
  */
 
 export function crearAcciones(ctx) {
-  const { motor, shell, favoritos, cola, raiz } = ctx;
+  const { motor, shell, favoritos, cola, temporizador, raiz } = ctx;
   const { player, queue } = motor;
+
+  // El temporizador entra por la paleta y no por atajos: se pone una vez al
+  // dia y gastar cinco combinaciones de teclado en el seria un despilfarro.
+  const dormir = [15, 30, 45, 60, 90].map((minutos) => ({
+    id: `dormir-${minutos}`,
+    texto: `Apagar dentro de ${minutos} minutos`,
+    icono: 'temporizador',
+    grupo: 'Temporizador',
+    ejecutar: () => temporizador?.porMinutos(minutos),
+  }));
 
   const saltar = (segundos) => player.seek(player.currentTime + segundos);
   const volumen = (delta) => {
@@ -219,6 +229,23 @@ export function crearAcciones(ctx) {
       tecla: { key: 'b', ctrl: true },
       atajo: 'Ctrl + B',
       ejecutar: () => document.querySelector('#btn-plegar')?.click(),
+    },
+
+    // --- Temporizador -------------------------------------------------------
+    ...dormir,
+    {
+      id: 'dormir-pista',
+      texto: 'Apagar al terminar esta cancion',
+      icono: 'temporizador',
+      grupo: 'Temporizador',
+      ejecutar: () => temporizador?.alTerminarLaPista(),
+    },
+    {
+      id: 'dormir-quitar',
+      texto: 'Quitar el temporizador',
+      icono: 'quitar',
+      grupo: 'Temporizador',
+      ejecutar: () => temporizador?.cancelar(),
     },
   ];
 }

@@ -110,6 +110,9 @@ export class Player {
     this.decks = [this._crearDeck(0), this._crearDeck(1)];
     this.activo = 0;
 
+    /** Sube en cada apagado; un fundido viejo se reconoce por no coincidir. */
+    this._tokenApagado = 0;
+
     this._aplicarMaster(0);
   }
 
@@ -280,6 +283,38 @@ export class Player {
     }
     this._emit('trackchange', { track: null, duration: 0 });
     this._emit('state', { playing: false, track: null });
+  }
+
+  /**
+   * Fundido de salida y pausa, para el temporizador de apagado.
+   *
+   * Baja el master a mano en vez de ir llamando a setVolume: setVolume guarda
+   * el valor en los ajustes, asi que un fundido dejaria el volumen a cero
+   * escrito en disco y la proxima vez la app abriria muda. Al terminar, el
+   * master vuelve al volumen de siempre, que no se ha tocado.
+   *
+   * Cortar en seco a mitad de una cancion despierta; ocho segundos de bajada
+   * no. La idea es dormirse, no que te apaguen la luz de golpe.
+   */
+  apagar(segundos = 8) {
+    const token = ++this._tokenApagado;
+    const dur = Math.max(0.1, segundos);
+    rampa(this.master.gain, 0, this.ctx.currentTime, dur);
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Si alguien cancelo o pidio otro apagado, este ya no manda.
+        if (token !== this._tokenApagado) return resolve(false);
+        this.pause();
+        this._aplicarMaster(0.15);
+        return resolve(true);
+      }, dur * 1000 + 60);
+    });
+  }
+
+  /** Corta un fundido en curso y devuelve el sonido. */
+  cancelarApagado() {
+    this._tokenApagado++;
+    this._aplicarMaster(0.3);
   }
 
   seek(segundos) {

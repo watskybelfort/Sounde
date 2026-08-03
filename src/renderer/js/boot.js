@@ -16,7 +16,8 @@ import { initAtajos } from './atajos.js';
 import { crearComandos } from './comandos.js';
 import { initSesionMedios } from './mediasession.js';
 import { initBarraTareas } from './barratareas.js';
-import { $, pintarGlifo } from './dom.js';
+import { crearTemporizador, formatoCuenta } from './temporizador.js';
+import { $, el, glifo, pintarGlifo } from './dom.js';
 
 const raiz = document.documentElement;
 
@@ -52,7 +53,9 @@ async function boot() {
     if (patch.mediaKeys !== undefined) sesion.setActivo(patch.mediaKeys !== false);
   });
 
-  const acciones = crearAcciones({ motor, shell, favoritos, cola, raiz });
+  const temporizador = engancharTemporizador(motor);
+
+  const acciones = crearAcciones({ motor, shell, favoritos, cola, temporizador, raiz });
   const comandos = crearComandos({ acciones, shell, motor, favoritos, listas });
 
   // La paleta se anade al catalogo despues de crearla porque necesita el
@@ -99,6 +102,43 @@ function engancharVisualizador(motor, ajustes) {
   });
 
   return visual;
+}
+
+/**
+ * El temporizador se enseña solo cuando esta puesto.
+ *
+ * Un boton fijo mas en el transporte seria un boton apagado el 99% del tiempo
+ * compitiendo por sitio con los que se usan siempre. Asi, cuando no hay
+ * temporizador no ocupa nada, y cuando lo hay la cuenta atras se ve sin tener
+ * que ir a buscarla.
+ */
+function engancharTemporizador(motor) {
+  const temporizador = crearTemporizador(motor);
+
+  const cuenta = el('span', { class: 'dormir__cuenta tabular' });
+  const pastilla = el('button', {
+    class: 'dormir',
+    hidden: true,
+    title: 'Temporizador puesto. Pulsa para quitarlo',
+  }, [
+    el('span', { class: 'dormir__icono', texto: glifo('temporizador') }),
+    cuenta,
+  ]);
+
+  pastilla.addEventListener('click', () => temporizador.cancelar());
+  document.querySelector('.extras').prepend(pastilla);
+
+  temporizador.on('cambio', ({ activo, modo, restanteMs }) => {
+    pastilla.hidden = !activo;
+    if (!activo) return;
+    cuenta.textContent = modo === 'pista' ? 'fin' : formatoCuenta(restanteMs);
+    pastilla.setAttribute('aria-label',
+      modo === 'pista'
+        ? 'Se apagara al terminar esta cancion. Pulsa para quitarlo'
+        : `Quedan ${formatoCuenta(restanteMs)}. Pulsa para quitar el temporizador`);
+  });
+
+  return temporizador;
 }
 
 function engancharLetra(shell) {
