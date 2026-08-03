@@ -14,6 +14,7 @@ const { Library } = require('./library');
 const { Collections } = require('./collections');
 const taskbar = require('./taskbar');
 const bandeja = require('./bandeja');
+const m3u = require('./m3u');
 
 const APP_URL = 'sounde://app/index.html';
 
@@ -144,13 +145,16 @@ function cerrar() {
   bandeja.destruir();
 }
 
+/** Listas de reproduccion que tambien se pueden abrir desde el Explorador. */
+const LISTA_EXTENSIONS = ['.m3u', '.m3u8'];
+
 /**
  * Los archivos que llegan de "Abrir con..." vienen sueltos en argv, mezclados
  * con los flags de Chromium. Se filtra por extension conocida y existencia
  * real: cualquier otra cosa es un flag, no una cancion.
  */
 function archivosDeArgv(argv = []) {
-  const exts = new Set(AUDIO_EXTENSIONS);
+  const exts = new Set([...AUDIO_EXTENSIONS, ...LISTA_EXTENSIONS]);
   return argv
     .slice(1)
     .filter((a) => typeof a === 'string' && !a.startsWith('-'))
@@ -163,6 +167,30 @@ function archivosDeArgv(argv = []) {
       }
     })
     .map((a) => path.resolve(a));
+}
+
+/**
+ * Cambia cada .m3u por las canciones que lleva dentro.
+ *
+ * El instalador asocia las listas igual que el audio, asi que un doble clic
+ * en una lista tiene que sonar. Sin esto, el archivo pasaria el filtro de
+ * extension y luego la biblioteca lo rechazaria por no ser audio: doble clic
+ * y no pasa nada, que es la peor forma de fallar.
+ */
+async function expandirListas(archivos) {
+  const salida = [];
+  for (const archivo of archivos) {
+    if (!LISTA_EXTENSIONS.includes(path.extname(archivo).toLowerCase())) {
+      salida.push(archivo);
+      continue;
+    }
+    try {
+      salida.push(...(await m3u.leer(archivo)));
+    } catch (err) {
+      console.error('[main] no pude leer la lista', archivo, '-', err.message);
+    }
+  }
+  return salida;
 }
 
 /**
@@ -192,7 +220,7 @@ async function escaneoInicial() {
 
 async function abrirArchivos(files) {
   if (!files.length || !library || !mainWindow || mainWindow.isDestroyed()) return;
-  const tracks = await library.addFiles(files);
+  const tracks = await library.addFiles(await expandirListas(files));
   if (!tracks.length) return;
   mainWindow.webContents.send('app:open-files', tracks.map(paraCliente));
 }

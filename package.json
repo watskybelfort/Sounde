@@ -20,5 +20,49 @@
   "devDependencies": {
     "electron": "^43.2.0",
     "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.mxrningstar.sounde",
+    "productName": "Sounde",
+    "copyright": "Copyright (c) 2026 MxrningStar",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "tools/acrylic-native.ps1",
+      "package.json"
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "build/icon.ico",
+      "artifactName": "Sounde-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Sounde",
+      "uninstallDisplayName": "Sounde",
+      "deleteAppDataOnUninstall": false
+    },
+    "fileAssociations": [
+      { "ext": "mp3", "name": "Audio MP3", "description": "Audio MP3", "role": "Viewer", "mimeType": "audio/mpeg", "icon": "build/icon.ico" },
+      { "ext": "flac", "name": "Audio FLAC", "description": "Audio FLAC sin perdida", "role": "Viewer", "mimeType": "audio/flac", "icon": "build/icon.ico" },
+      { "ext": "m4a", "name": "Audio M4A", "description": "Audio AAC en contenedor MP4", "role": "Viewer", "mimeType": "audio/mp4", "icon": "build/icon.ico" },
+      { "ext": "aac", "name": "Audio AAC", "description": "Audio AAC", "role": "Viewer", "mimeType": "audio/aac", "icon": "build/icon.ico" },
+      { "ext": "wav", "name": "Audio WAV", "description": "Audio WAV", "role": "Viewer", "mimeType": "audio/wav", "icon": "build/icon.ico" },
+      { "ext": "ogg", "name": "Audio OGG", "description": "Audio Ogg Vorbis", "role": "Viewer", "mimeType": "audio/ogg", "icon": "build/icon.ico" },
+      { "ext": "oga", "name": "Audio OGA", "description": "Audio Ogg", "role": "Viewer", "mimeType": "audio/ogg", "icon": "build/icon.ico" },
+      { "ext": "opus", "name": "Audio Opus", "description": "Audio Opus", "role": "Viewer", "mimeType": "audio/ogg", "icon": "build/icon.ico" },
+      { "ext": "m4b", "name": "Audiolibro M4B", "description": "Audiolibro", "role": "Viewer", "mimeType": "audio/mp4", "icon": "build/icon.ico" },
+      { "ext": "mka", "name": "Audio Matroska", "description": "Audio Matroska", "role": "Viewer", "mimeType": "audio/x-matroska", "icon": "build/icon.ico" },
+      { "ext": "weba", "name": "Audio WebM", "description": "Audio WebM", "role": "Viewer", "mimeType": "audio/webm", "icon": "build/icon.ico" },
+      { "ext": "m3u", "name": "Lista M3U", "description": "Lista de reproduccion", "role": "Viewer", "mimeType": "audio/x-mpegurl", "icon": "build/icon.ico" },
+      { "ext": "m3u8", "name": "Lista M3U8", "description": "Lista de reproduccion", "role": "Viewer", "mimeType": "audio/x-mpegurl", "icon": "build/icon.ico" }
+    ]
   }
 }
