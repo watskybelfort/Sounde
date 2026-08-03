@@ -32,6 +32,8 @@ export const ICONO = {
   refrescar: 0xe72c,
   plegar: 0xe76b,
   desplegar: 0xe76c,
+  flechaArriba: 0xe70e,
+  flechaAbajo: 0xe70d,
   ajustes: 0xe713,
   aPantalla: 0xe740,
   aVentana: 0xe73f,

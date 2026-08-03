@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="styles/acrylic.css">
   <link rel="stylesheet" href="styles/base.css">
   <link rel="stylesheet" href="styles/shell.css">
+  <link rel="stylesheet" href="styles/lista.css">
   <link rel="stylesheet" href="styles/titlebar.css">
   <link rel="stylesheet" href="styles/transport.css">
 </head>
@@ -91,6 +92,13 @@
           <span id="escaneo-texto">Escaneando…</span>
           <div class="escaneo__barra"><div class="escaneo__relleno"></div></div>
         </div>
+        <label class="buscador">
+          <span class="buscador__icono" id="icono-buscar" aria-hidden="true"></span>
+          <input class="buscador__campo" id="buscador" type="text" spellcheck="false"
+                 placeholder="Buscar" aria-label="Buscar en la biblioteca">
+        </label>
+        <button class="icono-btn" id="btn-tocar-todo" title="Reproducir todo" aria-label="Reproducir todo"></button>
+        <button class="icono-btn" id="btn-tocar-aleatorio" title="Reproducir en aleatorio" aria-label="Reproducir en aleatorio"></button>
       </div>
     </header>
 

@@ -4,11 +4,12 @@
  */
 
 import { $, el, glifo, pintarGlifo, plural, formatoTiempo } from './dom.js';
+import { crearLista } from './lista.js';
 
 const raiz = document.documentElement;
 
-export function initShell(motor) {
-  const { queue } = motor;
+export function initShell(motor, ajustes = {}) {
+  const { queue, player } = motor;
 
   const cuerpo = $('#vista-cuerpo');
   const resumen = $('#vista-resumen');
@@ -21,8 +22,49 @@ export function initShell(motor) {
   pintarGlifo($('#icono-abrir'), 'abrir');
   pintarGlifo($('#btn-reescanear'), 'refrescar');
   pintarGlifo($('#soltar-icono'), 'descargar');
+  pintarGlifo($('#icono-buscar'), 'buscar');
+  pintarGlifo($('#btn-tocar-todo'), 'reproducir');
+  pintarGlifo($('#btn-tocar-aleatorio'), 'aleatorio');
 
   let pistas = [];
+
+  // --- Lista ----------------------------------------------------------------
+
+  const lista = crearLista({
+    // Reproducir desde la lista hace que la cola SEA la lista tal y como se
+    // ve: filtrada y ordenada. Encolar la biblioteca entera haria que la
+    // siguiente cancion saliera de la nada respecto a lo que hay en pantalla.
+    onReproducir: (track, _i, visibles) => queue.setContext(visibles, { startId: track.id }),
+    onOrden: ({ por, dir }) => window.sounde.settings.set({ sortBy: por, sortDir: dir }),
+    onFiltrado: (visibles) => pintarResumen(visibles),
+  });
+
+  lista.setOrden(ajustes.sortBy, ajustes.sortDir);
+
+  const buscador = $('#buscador');
+  buscador.addEventListener('input', () => lista.setFiltro(buscador.value));
+  buscador.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    buscador.value = '';
+    lista.setFiltro('');
+    buscador.blur();
+  });
+
+  $('#btn-tocar-todo').addEventListener('click', () => {
+    if (!lista.visibles.length) return;
+    queue.setShuffle(false);
+    queue.setContext(lista.visibles, { startIndex: 0 });
+  });
+
+  $('#btn-tocar-aleatorio').addEventListener('click', () => {
+    if (!lista.visibles.length) return;
+    queue.setShuffle(true);
+    queue.setContext(lista.visibles, { startIndex: Math.floor(Math.random() * lista.visibles.length) });
+  });
+
+  const marcarActual = () => lista.setActual(player.track?.id ?? null, player.playing);
+  player.on('trackchange', marcarActual);
+  player.on('state', marcarActual);
 
   // --- Lateral --------------------------------------------------------------
 
@@ -125,7 +167,8 @@ export function initShell(motor) {
     const carpetas = await window.sounde.library.folders();
     escaneo.hidden = true;
     pintarCarpetas(carpetas);
-    pintarResumen();
+    lista.setPistas(pistas);
+    marcarActual();
     pintarCuerpo();
     return pistas;
   }
@@ -150,21 +193,45 @@ export function initShell(motor) {
     }));
   }
 
-  function pintarResumen() {
-    const total = pistas.reduce((s, t) => s + (t.duration || 0), 0);
-    resumen.textContent = pistas.length
-      ? `${plural(pistas.length, 'cancion', 'canciones')} · ${formatoTiempo(total)}`
-      : 'Sin musica todavia';
+  function pintarResumen(visibles = pistas) {
+    const total = visibles.reduce((s, t) => s + (t.duration || 0), 0);
+    const filtrando = visibles.length !== pistas.length;
+    resumen.textContent = !pistas.length
+      ? 'Sin musica todavia'
+      : `${plural(visibles.length, 'cancion', 'canciones')}${filtrando ? ` de ${pistas.length}` : ''} · ${formatoTiempo(total)}`;
+
     const cuenta = $('#cuenta-canciones');
     if (cuenta) cuenta.textContent = pistas.length ? String(pistas.length) : '';
+
+    // Buscar y no encontrar nada tiene que decirlo: una lista vacia sin
+    // explicacion se lee como que la biblioteca se ha perdido.
+    const sinResultados = pistas.length > 0 && visibles.length === 0;
+    $('#btn-tocar-todo').disabled = !visibles.length;
+    $('#btn-tocar-aleatorio').disabled = !visibles.length;
+    if (cuerpo.dataset.modo === 'lista') {
+      cuerpo.dataset.vacio = String(sinResultados);
+    }
   }
 
   function pintarCuerpo() {
     if (!pistas.length) {
+      cuerpo.dataset.modo = 'vacio';
       cuerpo.replaceChildren(vacio());
       return;
     }
-    cuerpo.replaceChildren(resumenBiblioteca());
+    if (cuerpo.dataset.modo !== 'lista') {
+      cuerpo.dataset.modo = 'lista';
+      cuerpo.replaceChildren(lista.nodo, sinResultados());
+    }
+    pintarResumen(lista.visibles);
+  }
+
+  function sinResultados() {
+    return el('div', { class: 'vacio vacio--busqueda' }, [
+      el('div', { class: 'vacio__icono', texto: glifo('buscar') }),
+      el('h2', { class: 'vacio__titulo', texto: 'Nada coincide' }),
+      el('p', { class: 'vacio__texto', texto: 'Prueba con otra palabra: se busca en titulo, artista y album.' }),
+    ]);
   }
 
   function vacio() {
@@ -201,37 +268,7 @@ export function initShell(motor) {
     ]);
   }
 
-  function resumenBiblioteca() {
-    return el('div', { class: 'vacio' }, [
-      el('div', { class: 'vacio__icono', texto: glifo('musica') }),
-      el('h2', { class: 'vacio__titulo', texto: plural(pistas.length, 'cancion lista', 'canciones listas') }),
-      el('p', { class: 'vacio__texto', texto: 'Dale a reproducir y suena todo seguido.' }),
-      el('div', { class: 'vacio__acciones' }, [
-        el('button', {
-          class: 'boton boton--acento',
-          onClick: () => {
-            queue.setShuffle(false);
-            queue.setContext(pistas, { startIndex: 0 });
-          },
-        }, [
-          el('span', { class: 'boton__icono', texto: glifo('reproducir') }),
-          el('span', { texto: 'Reproducir todo' }),
-        ]),
-        el('button', {
-          class: 'boton',
-          onClick: () => {
-            queue.setShuffle(true);
-            queue.setContext(pistas, { startIndex: Math.floor(Math.random() * pistas.length) });
-          },
-        }, [
-          el('span', { class: 'boton__icono', texto: glifo('aleatorio') }),
-          el('span', { texto: 'Aleatorio' }),
-        ]),
-      ]),
-    ]);
-  }
-
-  return { refrescar, get pistas() { return pistas; } };
+  return { refrescar, lista, get pistas() { return pistas; } };
 }
 
 /** Un arrastre de texto dentro de la app no debe encender la capa. */

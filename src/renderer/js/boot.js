@@ -28,7 +28,7 @@ async function boot() {
   window.sounde.settings.onChange((patch) => aplicarAjustes(patch));
 
   const motor = await crearMotor(ajustes);
-  const shell = initShell(motor);
+  const shell = initShell(motor, ajustes);
   initTransporte(motor);
 
   motor.queue.on('track', ({ track }) => {
