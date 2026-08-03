@@ -55,6 +55,23 @@ const DISTINTIVOS = {
 
 /** Azul por defecto de la app. El acento adaptativo vive en el renderer. */
 const ACENTO = [122, 162, 247];
+/** El mismo azul, hundido, para el degradado del icono grande. */
+const ACENTO_HONDO = [69, 104, 190];
+
+/**
+ * Las barras del icono de la aplicacion.
+ *
+ * Mas gruesas y mas cortas que las de la bandeja: aqui viven dentro de un
+ * cuadrado con margen, no sueltas sobre el fondo, y con el trazo fino se
+ * perderian contra el azul.
+ */
+const LOGO_GORDO = () => [
+  rect(0.185, 0.455, 0.09, 0.09),
+  rect(0.335, 0.335, 0.09, 0.33),
+  rect(0.455, 0.215, 0.09, 0.57),
+  rect(0.575, 0.335, 0.09, 0.33),
+  rect(0.725, 0.455, 0.09, 0.09),
+];
 
 /**
  * Glifo blanco sobre transparente, con las dos resoluciones que pide Windows.
@@ -71,6 +88,31 @@ function glifo(nombre) {
 /** La marca de Sounde en el color de acento, para la bandeja del sistema. */
 function marca() {
   return conRepresentaciones((tam) => pintar(tam, { formas: LOGO(), color: ACENTO }));
+}
+
+/**
+ * El icono de la aplicacion, en color y a cualquier tamaño.
+ *
+ * Barras blancas sobre cuadrado azul, no al reves. Un icono oscuro
+ * desaparece en una barra de tareas oscura, que es la de casi todo el mundo,
+ * y uno de solo barras finas se vuelve ilegible a 16 pixeles. El degradado
+ * es leve: a 16 no se ve, y a 256 evita que parezca un rectangulo de pintura.
+ */
+function iconoApp(tam) {
+  const marco = rectRedondo(0.045, 0.045, 0.91, 0.91, 0.22);
+  return componer(tam, [
+    { formas: [marco], color: (x, y) => degradado(ACENTO, ACENTO_HONDO, (x + y * 2) / 3) },
+    { formas: LOGO_GORDO(), color: [255, 255, 255] },
+  ]);
+}
+
+function degradado(a, b, t) {
+  const k = Math.min(1, Math.max(0, t));
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * k),
+    Math.round(a[1] + (b[1] - a[1]) * k),
+    Math.round(a[2] + (b[2] - a[2]) * k),
+  ];
 }
 
 /** Distintivo para el icono de la barra de tareas: disco con el glifo calado. */
@@ -96,35 +138,52 @@ function conRepresentaciones(pintarTam) {
  * Rasteriza a un buffer BGRA premultiplicado.
  * `hueco` resta cobertura: es lo que cala el glifo dentro del disco.
  */
-function pintar(tam, { formas = [], hueco = [], fondo = null, color }) {
-  const dentro = fondo || formas;
-  const cobertura = new Float32Array(tam * tam);
+function pintar(tam, capa) {
+  return componer(tam, [capa]);
+}
+
+/**
+ * Varias capas, de abajo arriba, sobre transparente.
+ *
+ * Hace falta para el icono de la aplicacion, que no es un glifo de un solo
+ * color: es un cuadrado redondeado con las barras encima. `color` puede ser
+ * un trio fijo o una funcion de (x, y) normalizados, que es como se consigue
+ * un degradado sin meter aqui un motor de graficos.
+ */
+function componer(tam, capas) {
+  const buf = Buffer.alloc(tam * tam * 4);
   const peso = 1 / (SS * SS);
   const n = tam * SS;
 
-  for (let y = 0; y < n; y++) {
-    const py = (y + 0.5) / (tam * SS);
-    const fila = Math.floor(y / SS) * tam;
-    for (let x = 0; x < n; x++) {
-      const px = (x + 0.5) / (tam * SS);
-      if (!dentro.some((f) => f(px, py))) continue;
-      if (hueco.length && hueco.some((f) => f(px, py))) continue;
-      cobertura[fila + Math.floor(x / SS)] += peso;
-    }
-  }
+  for (const { formas = [], hueco = [], fondo = null, color } of capas) {
+    const dentro = fondo || formas;
+    const cobertura = new Float32Array(tam * tam);
 
-  const buf = Buffer.alloc(tam * tam * 4);
-  const [r, g, b] = color;
-  for (let i = 0; i < cobertura.length; i++) {
-    const a = Math.min(1, cobertura[i]);
-    if (a <= 0) continue;
-    const o = i * 4;
-    // Premultiplicado: cada canal escalado por el alfa. Sin esto los bordes
-    // suavizados salen con un halo claro.
-    buf[o] = Math.round(b * a);
-    buf[o + 1] = Math.round(g * a);
-    buf[o + 2] = Math.round(r * a);
-    buf[o + 3] = Math.round(a * 255);
+    for (let y = 0; y < n; y++) {
+      const py = (y + 0.5) / (tam * SS);
+      const fila = Math.floor(y / SS) * tam;
+      for (let x = 0; x < n; x++) {
+        const px = (x + 0.5) / (tam * SS);
+        if (!dentro.some((f) => f(px, py))) continue;
+        if (hueco.length && hueco.some((f) => f(px, py))) continue;
+        cobertura[fila + Math.floor(x / SS)] += peso;
+      }
+    }
+
+    for (let i = 0; i < cobertura.length; i++) {
+      const a = Math.min(1, cobertura[i]);
+      if (a <= 0) continue;
+      const [r, g, b] = typeof color === 'function'
+        ? color((i % tam) / tam, Math.floor(i / tam) / tam)
+        : color;
+      const o = i * 4;
+      // Sobre lo que ya hubiera, en premultiplicado: canal = nuevo*a +
+      // viejo*(1-a). Sin premultiplicar, los bordes suavizados salen con halo.
+      buf[o] = Math.round(b * a + buf[o] * (1 - a));
+      buf[o + 1] = Math.round(g * a + buf[o + 1] * (1 - a));
+      buf[o + 2] = Math.round(r * a + buf[o + 2] * (1 - a));
+      buf[o + 3] = Math.round(a * 255 + buf[o + 3] * (1 - a));
+    }
   }
   return buf;
 }
@@ -133,6 +192,21 @@ function pintar(tam, { formas = [], hueco = [], fondo = null, color }) {
 
 function rect(x, y, w, h) {
   return (px, py) => px >= x && px <= x + w && py >= y && py <= y + h;
+}
+
+/** Cuadrado con las esquinas redondeadas, al estilo de los iconos de Windows. */
+function rectRedondo(x, y, w, h, r) {
+  const x1 = x + w;
+  const y1 = y + h;
+  return (px, py) => {
+    if (px < x || px > x1 || py < y || py > y1) return false;
+    // Solo las cuatro esquinas necesitan la prueba del circulo; el resto del
+    // rectangulo entra directo.
+    const cx = px < x + r ? x + r : px > x1 - r ? x1 - r : px;
+    const cy = py < y + r ? y + r : py > y1 - r ? y1 - r : py;
+    if (cx === px && cy === py) return true;
+    return (px - cx) ** 2 + (py - cy) ** 2 <= r * r;
+  };
 }
 
 function circulo(cx, cy, r) {
@@ -153,4 +227,4 @@ function triangulo(ax, ay, bx, by, cx, cy) {
   };
 }
 
-module.exports = { glifo, distintivo, marca };
+module.exports = { glifo, distintivo, marca, iconoApp };

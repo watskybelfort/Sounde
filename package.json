@@ -10,6 +10,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
+    "icono": "electron tools/hacer-icono.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
   },
