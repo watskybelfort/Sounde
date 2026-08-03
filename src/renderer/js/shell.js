@@ -84,6 +84,7 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
       if (vista.tipo === 'canciones') window.sounde.settings.set({ sortBy: por, sortDir: dir });
     },
     onFiltrado: () => pintarResumen(),
+    unClic: ajustes.clickToPlay !== false,
   });
   lista.setOrden(ajustes.sortBy, ajustes.sortDir);
 
@@ -98,6 +99,7 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
     conArte: false,
     numerar: 'pista',
     altoFila: 42,
+    unClic: ajustes.clickToPlay !== false,
   });
   listaAlbum.setOrden('pista', 'asc');
 
@@ -379,6 +381,64 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
   let servicios = [];
   const contenedorServicios = $('#grupos-servicios');
 
+  /**
+   * Listas escondidas, por servicio.
+   *
+   * Esconder es local y NO toca nada en la cuenta del usuario: los permisos
+   * que pide Sounde son de solo lectura, asi que aunque quisiera no podria
+   * borrar una lista de Spotify ni de YouTube. Lo que se guarda aqui es
+   * simplemente que no salga en el lateral.
+   */
+  let escondidas = { ...(ajustes.hiddenPlaylists ?? {}) };
+
+  const estaEscondida = (svc, id) => (escondidas[svc] ?? []).includes(id);
+
+  function esconder(svc, id) {
+    const suyas = new Set(escondidas[svc] ?? []);
+    suyas.add(id);
+    guardarEscondidas({ ...escondidas, [svc]: [...suyas] });
+  }
+
+  function mostrarTodas(svc) {
+    const copia = { ...escondidas };
+    delete copia[svc];
+    guardarEscondidas(copia);
+  }
+
+  function guardarEscondidas(nuevo) {
+    escondidas = nuevo;
+    window.sounde.settings.set({ hiddenPlaylists: nuevo });
+    // Si estabas dentro de la que acabas de esconder, no tiene sentido
+    // quedarse mirandola con el lateral ya sin ella.
+    if (vista.tipo === 'catalogo' && estaEscondida(vista.clave?.servicio, vista.clave?.lista)) {
+      ir({ tipo: 'canciones' });
+    } else {
+      pintarServicios();
+    }
+  }
+
+  function menuDeListaRemota(svc, playlist, evento) {
+    const suyas = escondidas[svc.id] ?? [];
+    abrirMenu([
+      {
+        texto: 'Abrir en el navegador',
+        icono: 'abrir',
+        onClick: () => window.sounde.app.abrirExterno(playlist.uri),
+      },
+      { separador: true },
+      {
+        texto: 'Esconder esta lista',
+        icono: 'quitar',
+        onClick: () => esconder(svc.id, playlist.id),
+      },
+      suyas.length ? {
+        texto: `Volver a mostrar las ${suyas.length} escondidas`,
+        icono: 'refrescar',
+        onClick: () => mostrarTodas(svc.id),
+      } : null,
+    ].filter(Boolean), { x: evento.clientX, y: evento.clientY });
+  }
+
   async function refrescarServicios() {
     const estados = await window.sounde.servicios.todos();
     servicios = await Promise.all(estados.map(async (e) => ({
@@ -416,14 +476,21 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
           },
         });
 
+        const visibles = s.listas.filter((p) => !estaEscondida(s.id, p.id));
+        const ocultas = s.listas.length - visibles.length;
+
         return el('div', { class: 'lateral__grupo lateral__grupo--servicio' }, [
           el('span', { class: 'lateral__titulo' }, [
             document.createTextNode(s.nombre),
             sincronizar,
           ]),
-          el('div', { class: 'lateral__listas' }, s.listas.map((p) => el('button', {
+          el('div', { class: 'lateral__listas' }, visibles.map((p) => el('button', {
             class: 'lateral__item',
             title: `${p.name} — tienes ${p.encontradas} de ${p.total}`,
+            onContextmenu: (e) => {
+              e.preventDefault();
+              menuDeListaRemota(s, p, e);
+            },
             'aria-current': String(
               vista.tipo === 'catalogo'
               && vista.clave?.servicio === s.id
@@ -441,6 +508,20 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
               texto: p.total ? `${p.encontradas}/${p.total}` : '',
             }),
           ]))),
+
+          // Sin esto, esconder una lista la hace desaparecer sin rastro y no
+          // hay forma de recuperarla salvo editando settings.json a mano.
+          ocultas ? el('button', {
+            class: 'lateral__item lateral__item--tenue',
+            title: 'Volver a mostrar las listas escondidas',
+            onClick: () => mostrarTodas(s.id),
+          }, [
+            el('span', { class: 'lateral__icono', texto: glifo('refrescar') }),
+            el('span', {
+              class: 'lateral__texto',
+              texto: `${ocultas} escondida${ocultas === 1 ? '' : 's'}`,
+            }),
+          ]) : null,
         ]);
       }));
   }
@@ -589,6 +670,13 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
   });
 
   window.sounde.library.onChanged(() => refrescar());
+
+  // El ajuste se toca con la lista ya montada: hay que enterarse en caliente.
+  window.sounde.settings.onChange((patch) => {
+    if (patch.clickToPlay === undefined) return;
+    lista.setUnClic(patch.clickToPlay);
+    listaAlbum.setUnClic(patch.clickToPlay);
+  });
 
   // --- Arrastrar y soltar ---------------------------------------------------
 
