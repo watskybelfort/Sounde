@@ -155,6 +155,7 @@ contextBridge.exposeInMainWorld('sounde', {
   app: {
     info: () => ipcRenderer.invoke('app:info'),
     constants: () => ipcRenderer.invoke('app:constants'),
+    abrirExterno: (url) => ipcRenderer.invoke('app:open-external', url),
 
     onOpenFiles: (h) => {
       alRecibirArchivos = h;

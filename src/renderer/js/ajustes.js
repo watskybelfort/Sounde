@@ -10,7 +10,8 @@
  * puede ajustar de oido, que es la unica forma de ajustarlo.
  */
 
-import { el, glifo, clamp } from './dom.js';
+import { el, glifo, clamp, plural } from './dom.js';
+import { confirmar } from './dialogo.js';
 
 const MODOS_VIDRIO = [
   { valor: 'acrylic', texto: 'Acrilico', ayuda: 'El del sistema. Windows lo apaga al perder el foco.' },
@@ -98,6 +99,7 @@ export function crearAjustes({ motor, ajustes, shell }) {
       seccionAspecto(),
       seccionSistema(),
       seccionBiblioteca(),
+      seccionSpotify(),
     ]);
 
     const hoja = el('div', {
@@ -327,7 +329,208 @@ export function crearAjustes({ motor, ajustes, shell }) {
     ]);
   }
 
-  return { abrir, cerrar, alternar, get abierto() { return !!capa; } };
+  /**
+   * Spotify.
+   *
+   * Hace falta un Client ID del usuario y no viene uno puesto. No es pereza:
+   * en PKCE el Client ID viaja en la URL a la vista de cualquiera, asi que
+   * repartir el mio en el instalador significaria que todas las instalaciones
+   * de Sounde comparten la misma cuota de la API — basta con que unos cuantos
+   * sincronicen a la vez para que a los demas les empiece a salir 429. Con el
+   * suyo, cada uno tiene la suya.
+   */
+  function seccionSpotify() {
+    const estadoNodo = el('div', { class: 'spotify__estado' });
+    const acciones = el('div', { class: 'ajustes__botones' });
+    const avance = el('p', { class: 'ajustes__ayuda spotify__avance', hidden: true });
+
+    const campo = el('input', {
+      class: 'dialogo__campo',
+      type: 'text',
+      spellcheck: 'false',
+      autocomplete: 'off',
+      placeholder: '32 caracteres del panel de Spotify',
+      'aria-label': 'Client ID de tu aplicacion de Spotify',
+    });
+
+    const uri = el('input', {
+      class: 'dialogo__campo spotify__uri',
+      type: 'text',
+      readonly: true,
+      'aria-label': 'URI de retorno que hay que registrar en Spotify',
+    });
+
+    let sp = null;
+
+    async function refrescarEstado() {
+      sp = await window.sounde.spotify.estado();
+      campo.value = sp.clientId ?? '';
+      uri.value = sp.redirectUri ?? '';
+      pintarEstado();
+      pintarAcciones();
+    }
+
+    function pintarEstado() {
+      if (!sp?.conectado) {
+        estadoNodo.replaceChildren(
+          el('span', { class: 'spotify__punto' }),
+          el('span', { texto: 'Sin conectar' }),
+        );
+        return;
+      }
+      const nombre = sp.perfil?.nombre ?? 'tu cuenta';
+      const cuando = sp.sincronizado
+        ? `Ultima sincronizacion: ${new Date(sp.sincronizado).toLocaleString()}`
+        : 'Todavia sin sincronizar';
+      estadoNodo.replaceChildren(
+        el('span', { class: 'spotify__punto spotify__punto--vivo' }),
+        el('div', { class: 'spotify__quien' }, [
+          el('span', { texto: `Conectado como ${nombre}` }),
+          el('span', {
+            class: 'ajustes__ayuda',
+            texto: `${plural(sp.listas ?? 0, 'lista', 'listas')} · ${plural(sp.guardadas ?? 0, 'guardada', 'guardadas')} · ${cuando}`,
+          }),
+        ]),
+      );
+    }
+
+    function pintarAcciones() {
+      if (!sp?.conectado) {
+        acciones.replaceChildren(el('button', {
+          class: 'boton boton--acento',
+          texto: 'Conectar con Spotify',
+          // Sin Client ID no hay nada que intentar: el boton apagado con la
+          // ayuda debajo explica mejor que un error despues de pulsarlo.
+          ...(sp?.hayClientId ? {} : { disabled: true }),
+          onclick: conectar,
+        }));
+        return;
+      }
+      acciones.replaceChildren(
+        el('button', { class: 'boton', texto: 'Sincronizar ahora', onclick: sincronizar }),
+        el('button', { class: 'boton boton--peligro', texto: 'Desconectar', onclick: desconectar }),
+      );
+    }
+
+    function decir(texto, esFallo = false) {
+      avance.hidden = !texto;
+      avance.textContent = texto ?? '';
+      avance.dataset.fallo = String(!!esFallo);
+    }
+
+    async function conectar() {
+      decir('Abriendo el navegador… acepta en Spotify y vuelve aqui.');
+      const res = await window.sounde.spotify.conectar();
+      if (!res?.ok) {
+        decir(res?.error ?? 'No se pudo conectar.', true);
+      } else {
+        decir(`Listo: ${plural(res.listas ?? 0, 'lista traida', 'listas traidas')}.`);
+      }
+      await refrescarEstado();
+      shell?.refrescarSpotify?.();
+    }
+
+    async function sincronizar() {
+      decir('Sincronizando…');
+      const res = await window.sounde.spotify.sincronizar();
+      decir(res?.ok
+        ? `Listo: ${plural(res.listas ?? 0, 'lista', 'listas')} y ${plural(res.guardadas ?? 0, 'guardada', 'guardadas')}.`
+        : (res?.error ?? 'No se pudo sincronizar.'), !res?.ok);
+      await refrescarEstado();
+      shell?.refrescarSpotify?.();
+    }
+
+    async function desconectar() {
+      const seguro = await confirmar({
+        titulo: 'Desconectar Spotify',
+        texto: 'Se borran la sesion y el catalogo descargado. Tu musica local no se toca.',
+        aceptar: 'Desconectar',
+        peligro: true,
+      });
+      if (!seguro) return;
+      await window.sounde.spotify.desconectar();
+      decir('');
+      await refrescarEstado();
+      shell?.refrescarSpotify?.();
+    }
+
+    // El avance de la sincronizacion llega por su canal: con una cuenta grande
+    // esto tarda, y una interfaz quieta es indistinguible de una colgada.
+    window.sounde.spotify.onProgreso((p) => {
+      if (!capa) return;
+      decir(textoDeFase(p));
+    });
+
+    campo.addEventListener('change', async () => {
+      sp = await window.sounde.spotify.setClientId(campo.value);
+      pintarEstado();
+      pintarAcciones();
+    });
+
+    refrescarEstado();
+
+    return seccion('Spotify', [
+      fila('Cuenta', 'Trae tus listas y tus me gusta, y te dice cuales de esas canciones ya tienes en el disco.', estadoNodo),
+      el('div', { class: 'ajustes__bloque' }, [acciones, avance]),
+
+      el('div', { class: 'ajustes__bloque' }, [
+        el('p', { class: 'ajustes__ayuda' }, [
+          el('span', { texto: 'Hace falta una aplicacion tuya en el panel de Spotify. Crea una en ' }),
+          enlace('developer.spotify.com/dashboard', 'https://developer.spotify.com/dashboard'),
+          el('span', { texto: ', pega abajo esta URI de retorno tal cual, y copia aqui el Client ID.' }),
+        ]),
+        el('label', { class: 'dialogo__etiqueta', texto: 'URI de retorno (pegala en Spotify)' }),
+        el('div', { class: 'spotify__uri-fila' }, [
+          uri,
+          el('button', {
+            class: 'boton',
+            texto: 'Copiar',
+            onclick: async () => {
+              await navigator.clipboard.writeText(uri.value);
+              decir('URI copiada.');
+            },
+          }),
+        ]),
+        el('label', { class: 'dialogo__etiqueta', texto: 'Client ID' }),
+        campo,
+        el('p', {
+          class: 'ajustes__ayuda',
+          texto: 'No es un secreto: en este flujo viaja en la URL y se ve en el navegador. Lo que protege la conexion es un verificador que se genera en cada intento.',
+        }),
+      ]),
+    ]);
+  }
+
+  return {
+    abrir, cerrar, alternar, get abierto() { return !!capa; },
+  };
+}
+
+function textoDeFase(p) {
+  const { fase, hechos, total, detalle } = p ?? {};
+  if (fase === 'perfil') return 'Leyendo tu perfil…';
+  if (fase === 'listas') return total ? `Listas: ${hechos ?? 0} de ${total}` : 'Buscando tus listas…';
+  if (fase === 'canciones') {
+    return `Canciones de "${detalle ?? ''}" (${(hechos ?? 0) + 1} de ${total ?? '?'})`;
+  }
+  if (fase === 'guardadas') return total ? `Tus me gusta: ${hechos ?? 0} de ${total}` : 'Leyendo tus me gusta…';
+  if (fase === 'caratulas') return `Caratulas: ${hechos ?? 0} de ${total ?? '?'}`;
+  return 'Sincronizando…';
+}
+
+/**
+ * Un enlace que abre en el navegador del sistema.
+ *
+ * Un `<a href>` normal navegaria DENTRO de la ventana y se llevaria por
+ * delante la interfaz entera, sin barra de direcciones para volver.
+ */
+function enlace(texto, url) {
+  return el('button', {
+    class: 'enlace',
+    type: 'button',
+    texto,
+    onclick: () => window.sounde.app.abrirExterno(url),
+  });
 }
 
 // --- Piezas -----------------------------------------------------------------

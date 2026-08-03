@@ -373,6 +373,25 @@ function registerIpc(ctx) {
   });
 
   // --- Varios -------------------------------------------------------------
+  /**
+   * Abrir un enlace fuera.
+   *
+   * Solo http(s), y comprobado aqui. La pagina no puede mandar `file://` ni
+   * un esquema raro: `shell.openExternal` se lo pasaria al sistema tal cual,
+   * y eso es ejecutar lo que diga la cadena.
+   */
+  ipcMain.handle('app:open-external', (_e, url) => {
+    let destino;
+    try {
+      destino = new URL(String(url));
+    } catch {
+      return false;
+    }
+    if (destino.protocol !== 'https:' && destino.protocol !== 'http:') return false;
+    shell.openExternal(destino.toString());
+    return true;
+  });
+
   ipcMain.handle('app:info', () => ({
     version: app.getVersion(),
     userData: app.getPath('userData'),

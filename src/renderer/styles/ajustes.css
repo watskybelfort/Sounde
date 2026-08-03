@@ -358,3 +358,82 @@ input[type='range']:focus-visible::-webkit-slider-thumb {
   direction: rtl;      /* rutas largas: interesa ver el final, no el C:\ */
   text-align: left;
 }
+
+/* --- Spotify -------------------------------------------------------------- */
+
+.spotify__estado {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.spotify__quien {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/*
+ * El punto de estado no lleva `transition`.
+ *
+ * Es la regla del color adaptativo: cualquier cosa derivada de --acento se
+ * repinta en cada fotograma del bucle, y una transicion encima se reinicia
+ * sesenta veces por segundo sin llegar nunca al color nuevo.
+ */
+.spotify__punto {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radio-full);
+  background: var(--texto-3);
+}
+
+.spotify__punto--vivo {
+  background: rgb(var(--acento));
+  box-shadow: 0 0 0 3px rgb(var(--acento) / 0.18);
+}
+
+.spotify__uri-fila {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* La URI hay que poder seleccionarla entera para pegarla en el panel. */
+.spotify__uri {
+  flex: 1;
+  min-width: 0;
+  color: var(--texto-2);
+  user-select: all;
+}
+
+.spotify__avance {
+  margin-top: 8px;
+  min-height: 16px;
+}
+
+.spotify__avance[data-fallo='true'] {
+  color: rgb(255 138 128);
+}
+
+/*
+ * Enlace con aspecto de enlace pero que es un boton.
+ *
+ * Un <a href> navegaria dentro de la ventana y se llevaria la interfaz por
+ * delante, sin barra de direcciones para volver.
+ */
+.enlace {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--texto-acento);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.enlace:hover {
+  opacity: 0.8;
+}
