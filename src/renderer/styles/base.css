@@ -121,6 +121,13 @@ img {
   display: none !important;
 }
 
+/* El atributo `hidden` solo vale `display:none` en la hoja del navegador, que
+   pierde contra cualquier `display` nuestro. Sin esto, poner hidden a algo
+   con `display:flex` no lo esconde y aparece en pantalla igual. */
+[hidden] {
+  display: none !important;
+}
+
 .solo-lectores {
   position: absolute;
   width: 1px;

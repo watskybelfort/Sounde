@@ -21,10 +21,17 @@ class JsonStore {
 
   load() {
     try {
-      const raw = fs.readFileSync(this.file, 'utf8');
+      // El BOM se quita antes de parsear: JSON.parse lo trata como basura y
+      // lanza. Cualquier editor de Windows lo pone sin avisar, y el sintoma
+      // seria que el usuario edita ajustes.json a mano y la app arranca como
+      // si el archivo no existiera, con todo por defecto.
+      const raw = fs.readFileSync(this.file, 'utf8').replace(/^﻿/, '');
       const parsed = JSON.parse(raw);
-      this.data = { ...this.defaults, ...parsed };
-    } catch {
+      if (parsed && typeof parsed === 'object') this.data = { ...this.defaults, ...parsed };
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        console.warn('[store] no pude leer', this.file, '-', err.message);
+      }
       this.data = { ...this.defaults };
     }
     return this.data;

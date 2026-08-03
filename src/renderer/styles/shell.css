@@ -1,0 +1,549 @@
+/* ============================================================================
+ * SOUNDE · ESTRUCTURA
+ *
+ * Rejilla fija: barra de titulo arriba, lateral a la izquierda, transporte
+ * abajo, y el contenido ocupando lo que queda. Solo el lateral y el
+ * transporte se tintan; entre ellos no hay solape, que es la condicion para
+ * que las veladuras no se sumen y el acrilico siga viendose.
+ * ==========================================================================*/
+
+:root {
+  --alto-titulo: 40px;
+  --ancho-lateral: 236px;
+  --ancho-lateral-min: 60px;
+  --alto-transporte: 88px;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: var(--ancho-lateral) minmax(0, 1fr);
+  grid-template-rows: var(--alto-titulo) minmax(0, 1fr) var(--alto-transporte);
+  grid-template-areas:
+    'titulo     titulo'
+    'lateral    vista'
+    'transporte transporte';
+  height: 100vh;
+  transition: grid-template-columns var(--dur-2) var(--ease-in-out);
+}
+
+.app > .titlebar { grid-area: titulo; }
+.lateral { grid-area: lateral; }
+.vista { grid-area: vista; }
+.transporte { grid-area: transporte; }
+
+:root[data-lateral='plegado'] .app {
+  grid-template-columns: var(--ancho-lateral-min) minmax(0, 1fr);
+}
+
+/* En mini-player desaparece todo menos el transporte. */
+:root[data-mini='true'] .app {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 32px minmax(0, 1fr);
+  grid-template-areas:
+    'titulo'
+    'transporte';
+}
+
+:root[data-mini='true'] .lateral,
+:root[data-mini='true'] .vista {
+  display: none;
+}
+
+/* ---------------------------------------------------------------- lateral */
+
+.lateral {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 6px 10px 10px;
+  background: var(--vidrio-1);
+  border-right: 1px solid var(--realce-borde);
+}
+
+.lateral__grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.lateral__grupo + .lateral__grupo {
+  margin-top: 14px;
+}
+
+.lateral__titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--texto-3);
+  white-space: nowrap;
+}
+
+/* Accion pequena dentro de una cabecera de grupo (reescanear, etc.). */
+.lateral__accion {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radio-1);
+  color: var(--texto-3);
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 11px;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+.lateral__accion:hover {
+  background: var(--hover);
+  color: var(--texto);
+}
+
+.lateral__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: var(--radio-1);
+  color: var(--texto-2);
+  font-size: 13px;
+  text-align: left;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+.lateral__item:hover {
+  background: var(--hover);
+  color: var(--texto);
+}
+
+.lateral__item:active {
+  background: var(--pulsado);
+}
+
+.lateral__item[aria-current='true'] {
+  background: var(--seleccion);
+  color: var(--texto);
+  font-weight: 600;
+}
+
+/* La barrita de la izquierda es la senal de "estas aqui" de Windows 11. */
+.lateral__item[aria-current='true']::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 16px;
+  transform: translateY(-50%);
+  border-radius: var(--radio-full);
+  background: rgb(var(--acento));
+  transition: background var(--dur-paleta) var(--ease-in-out);
+}
+
+.lateral__icono {
+  flex: 0 0 auto;
+  width: 16px;
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 15px;
+  line-height: 1;
+  text-align: center;
+}
+
+.lateral__texto {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lateral__cuenta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--texto-3);
+}
+
+/* Plegado: solo iconos, y el texto se va sin dejar hueco. */
+:root[data-lateral='plegado'] .lateral {
+  padding-inline: 8px;
+}
+
+:root[data-lateral='plegado'] .lateral__texto,
+:root[data-lateral='plegado'] .lateral__cuenta,
+:root[data-lateral='plegado'] .lateral__titulo,
+:root[data-lateral='plegado'] .lateral__carpetas {
+  display: none;
+}
+
+:root[data-lateral='plegado'] .lateral__item {
+  justify-content: center;
+  padding: 0;
+}
+
+.lateral__pie {
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+/* Carpetas vigiladas */
+
+.lateral__carpetas {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+
+.carpeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: var(--radio-1);
+  color: var(--texto-3);
+  font-size: 12px;
+}
+
+.carpeta:hover {
+  background: var(--hover);
+  color: var(--texto-2);
+}
+
+.carpeta__nombre {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.carpeta__quitar {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  border-radius: var(--radio-1);
+  color: var(--texto-3);
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
+}
+
+.carpeta:hover .carpeta__quitar {
+  opacity: 1;
+}
+
+.carpeta__quitar:hover {
+  background: var(--pulsado);
+  color: var(--texto);
+}
+
+/* --------------------------------------------------------------- botones */
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--realce-borde);
+  border-radius: var(--radio-1);
+  background: var(--vidrio-2);
+  color: var(--texto);
+  font-size: 12.5px;
+  transition: background var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+}
+
+.boton:hover {
+  background: var(--vidrio-3);
+  border-color: var(--realce-borde-fuerte);
+}
+
+.boton:active {
+  background: var(--pulsado);
+}
+
+.boton--acento {
+  background: rgb(var(--acento) / 0.9);
+  border-color: transparent;
+  color: #0b0e13;
+  font-weight: 600;
+  transition: background var(--dur-paleta) var(--ease-in-out);
+}
+
+.boton--acento:hover {
+  background: rgb(var(--acento));
+}
+
+.boton--ancho {
+  width: 100%;
+}
+
+.boton__icono {
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 13px;
+  line-height: 1;
+}
+
+:root[data-lateral='plegado'] .boton--ancho {
+  padding: 0;
+}
+
+:root[data-lateral='plegado'] .boton--ancho .boton__texto {
+  display: none;
+}
+
+/* Boton redondo de icono, el que se repite por toda la app. */
+.icono-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radio-full);
+  color: var(--texto-2);
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 14px;
+  line-height: 1;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+.icono-btn:hover {
+  background: var(--hover);
+  color: var(--texto);
+}
+
+.icono-btn:active {
+  background: var(--pulsado);
+}
+
+.icono-btn[aria-pressed='true'] {
+  color: rgb(var(--acento));
+}
+
+/* Punto bajo el boton: distingue "activo" de "solo resaltado", que con un
+   cambio de color a secas no se lee de un vistazo. */
+.icono-btn[aria-pressed='true']::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  width: 3px;
+  height: 3px;
+  border-radius: var(--radio-full);
+  background: rgb(var(--acento));
+}
+
+.icono-btn {
+  position: relative;
+}
+
+/* ----------------------------------------------------------------- vista */
+
+.vista {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.vista__cabecera {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 20px 12px;
+}
+
+.vista__titulo {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.vista__resumen {
+  font-size: 12px;
+  color: var(--texto-3);
+}
+
+.vista__acciones {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.vista__cuerpo {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 20px 20px;
+}
+
+/* Buscador */
+
+.buscador {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 240px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--realce-borde);
+  border-radius: var(--radio-full);
+  background: var(--vidrio-2);
+  transition: border-color var(--dur-1) var(--ease-out), width var(--dur-2) var(--ease-in-out);
+}
+
+.buscador:focus-within {
+  border-color: rgb(var(--acento) / 0.7);
+  width: 300px;
+}
+
+.buscador__icono {
+  color: var(--texto-3);
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 13px;
+}
+
+.buscador__campo {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  user-select: text;
+  cursor: text;
+}
+
+.buscador__campo::placeholder {
+  color: var(--texto-3);
+}
+
+/* --------------------------------------------------------- estado vacio */
+
+.vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  height: 100%;
+  min-height: 280px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.vacio__icono {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border: 1px solid var(--realce-borde);
+  border-radius: var(--radio-full);
+  background: var(--vidrio-1);
+  color: var(--texto-3);
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 28px;
+}
+
+.vacio__titulo {
+  font-size: 17px;
+}
+
+.vacio__texto {
+  max-width: 380px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--texto-3);
+}
+
+.vacio__acciones {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ------------------------------------------------------ progreso escaneo */
+
+.escaneo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 240px;
+  padding: 8px 10px;
+  border-radius: var(--radio-1);
+  background: var(--vidrio-2);
+  font-size: 11.5px;
+  color: var(--texto-2);
+}
+
+.escaneo__barra {
+  flex: 1;
+  height: 3px;
+  border-radius: var(--radio-full);
+  background: rgb(255 255 255 / 0.1);
+  overflow: hidden;
+}
+
+.escaneo__relleno {
+  height: 100%;
+  width: calc(var(--valor, 0) * 100%);
+  border-radius: var(--radio-full);
+  background: rgb(var(--acento));
+  transition: width var(--dur-2) var(--ease-out);
+}
+
+/* Sin total conocido la barra no puede medir nada: en vez de mentir con un
+   porcentaje inventado, recorre de lado a lado. */
+.escaneo[data-indeterminado='true'] .escaneo__relleno {
+  width: 35%;
+  animation: escaneo-vaiven 1.1s var(--ease-in-out) infinite;
+}
+
+@keyframes escaneo-vaiven {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(285%); }
+}
+
+/* ---------------------------------------------- capa de arrastrar y soltar */
+
+.soltar {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  background: rgb(var(--tinte) / 0.55);
+  backdrop-filter: blur(18px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+:root[data-soltando='true'] .soltar {
+  opacity: 1;
+}
+
+.soltar__marco {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 56px;
+  border: 2px dashed rgb(var(--acento) / 0.6);
+  border-radius: var(--radio-3);
+  font-size: 15px;
+}
+
+.soltar__icono {
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 34px;
+  color: rgb(var(--acento));
+}

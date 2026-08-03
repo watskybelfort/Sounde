@@ -53,6 +53,7 @@ const DEFAULT_SETTINGS = {
   sortBy: 'title',
   sortDir: 'asc',
   view: 'songs',
+  sidebarCollapsed: false,
 
   // --- Ventana ------------------------------------------------------------
   bounds: null,

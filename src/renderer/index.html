@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-focused="true" data-backdrop="acrylic" data-mini="false">
+<html lang="es" data-focused="true" data-backdrop="acrylic" data-mini="false" data-lateral="abierto">
 <head>
   <meta charset="utf-8">
   <!-- CSP estricta: sin 'unsafe-inline'. Por eso en el codigo no hay ni un
@@ -16,10 +16,13 @@
   <title>Sounde</title>
   <link rel="stylesheet" href="styles/acrylic.css">
   <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/shell.css">
   <link rel="stylesheet" href="styles/titlebar.css">
-  <link rel="stylesheet" href="styles/probe.css">
+  <link rel="stylesheet" href="styles/transport.css">
 </head>
 <body>
+
+<div class="app">
 
   <header class="titlebar">
     <div class="titlebar__marca">
@@ -30,7 +33,7 @@
       <span>Sounde</span>
     </div>
 
-    <div class="titlebar__ahora truncar" id="titulo-ahora">Vidrio en verificacion</div>
+    <div class="titlebar__ahora truncar" id="titulo-ahora">Sounde</div>
 
     <div class="titlebar__espacio"></div>
 
@@ -41,34 +44,117 @@
     </div>
   </header>
 
-  <main class="probe">
-    <section class="probe__panel vidrio brillo-superior">
-      <h1 class="probe__titulo">Vidrio</h1>
-      <p class="probe__texto">
-        El desenfoque de esta ventana lo compone DWM. Si detras se ve el
-        escritorio difuminado y no un panel gris plano, el acrilico es real.
-      </p>
-      <dl class="probe__datos">
-        <div><dt>Backdrop</dt><dd id="dato-backdrop">—</dd></div>
-        <div><dt>Foco</dt><dd id="dato-foco">—</dd></div>
-        <div><dt>Electron</dt><dd id="dato-electron">—</dd></div>
-        <div><dt>Chromium</dt><dd id="dato-chromium">—</dd></div>
-      </dl>
-    </section>
+  <nav class="lateral" aria-label="Navegacion">
+    <div class="lateral__grupo">
+      <button class="lateral__item" id="btn-plegar" title="Plegar el panel" aria-label="Plegar el panel">
+        <span class="lateral__icono" id="icono-plegar" aria-hidden="true"></span>
+      </button>
+    </div>
 
-    <section class="probe__muestras">
-      <div class="probe__muestra probe__muestra--1"><span>vidrio&nbsp;1</span></div>
-      <div class="probe__muestra probe__muestra--2"><span>vidrio&nbsp;2</span></div>
-      <div class="probe__muestra probe__muestra--3"><span>vidrio&nbsp;3</span></div>
-      <div class="probe__muestra probe__muestra--flotante flotante"><span>flotante</span></div>
-    </section>
+    <div class="lateral__grupo">
+      <span class="lateral__titulo">Biblioteca</span>
+      <button class="lateral__item" id="nav-canciones" aria-current="true">
+        <span class="lateral__icono" id="icono-canciones" aria-hidden="true"></span>
+        <span class="lateral__texto">Canciones</span>
+        <span class="lateral__cuenta tabular" id="cuenta-canciones"></span>
+      </button>
+    </div>
 
-    <section class="probe__modos">
-      <span class="probe__etiqueta">Modo de vidrio</span>
-      <div class="probe__botones" id="modos"></div>
-    </section>
-  </main>
+    <div class="lateral__grupo">
+      <span class="lateral__titulo">
+        Carpetas
+        <button class="lateral__accion" id="btn-reescanear" title="Volver a escanear" aria-label="Volver a escanear"></button>
+      </span>
+      <div class="lateral__carpetas" id="lista-carpetas"></div>
+    </div>
 
-  <script type="module" src="js/boot.js"></script>
+    <div class="lateral__grupo lateral__pie">
+      <button class="boton boton--ancho" id="btn-anadir-carpeta" title="Anadir una carpeta de musica">
+        <span class="boton__icono" id="icono-anadir" aria-hidden="true"></span>
+        <span class="boton__texto">Anadir carpeta</span>
+      </button>
+      <button class="boton boton--ancho" id="btn-abrir-archivos" title="Abrir archivos sueltos">
+        <span class="boton__icono" id="icono-abrir" aria-hidden="true"></span>
+        <span class="boton__texto">Abrir archivos</span>
+      </button>
+    </div>
+  </nav>
+
+  <section class="vista">
+    <header class="vista__cabecera">
+      <div>
+        <h1 class="vista__titulo" id="vista-titulo">Canciones</h1>
+        <div class="vista__resumen" id="vista-resumen">Sin musica todavia</div>
+      </div>
+      <div class="vista__acciones">
+        <div class="escaneo" id="escaneo" hidden>
+          <span id="escaneo-texto">Escaneando…</span>
+          <div class="escaneo__barra"><div class="escaneo__relleno"></div></div>
+        </div>
+      </div>
+    </header>
+
+    <div class="vista__cuerpo" id="vista-cuerpo"></div>
+  </section>
+
+  <footer class="transporte">
+
+    <div class="ahora">
+      <div class="ahora__arte" id="ahora-arte">
+        <img class="ahora__imagen" id="ahora-imagen" alt="" hidden>
+      </div>
+      <div class="ahora__textos">
+        <div class="ahora__titulo truncar" id="ahora-titulo">Nada sonando</div>
+        <div class="ahora__artista truncar" id="ahora-artista">Elige algo y dale al play</div>
+      </div>
+    </div>
+
+    <div class="mandos">
+      <div class="mandos__fila">
+        <button class="icono-btn" id="btn-aleatorio" aria-pressed="false" title="Aleatorio" aria-label="Aleatorio"></button>
+        <button class="icono-btn" id="btn-anterior" title="Anterior" aria-label="Anterior"></button>
+        <button class="mandos__reproducir" id="btn-reproducir" title="Reproducir" aria-label="Reproducir"></button>
+        <button class="icono-btn" id="btn-siguiente" title="Siguiente" aria-label="Siguiente"></button>
+        <button class="icono-btn" id="btn-repetir" aria-pressed="false" title="Repetir" aria-label="Repetir"></button>
+      </div>
+      <div class="mandos__tiempo tabular">
+        <span class="mandos__reloj" id="reloj-actual">0:00</span>
+        <div class="barra" id="barra-tiempo" role="slider" tabindex="0"
+             aria-label="Posicion" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+          <div class="barra__pista">
+            <div class="barra__buffer"></div>
+            <div class="barra__relleno"></div>
+            <div class="barra__pomo"></div>
+          </div>
+          <div class="barra__globo tabular" id="globo-tiempo">0:00</div>
+        </div>
+        <span class="mandos__reloj" id="reloj-total">0:00</span>
+      </div>
+    </div>
+
+    <div class="extras">
+      <button class="icono-btn" id="btn-silencio" aria-pressed="false" title="Silenciar" aria-label="Silenciar"></button>
+      <div class="barra barra--fina extras__volumen" id="barra-volumen" role="slider" tabindex="0"
+           aria-label="Volumen" aria-valuemin="0" aria-valuemax="100" aria-valuenow="80">
+        <div class="barra__pista">
+          <div class="barra__relleno"></div>
+          <div class="barra__pomo"></div>
+        </div>
+      </div>
+      <button class="icono-btn" id="btn-mini" title="Mini reproductor" aria-label="Mini reproductor"></button>
+    </div>
+
+  </footer>
+
+</div>
+
+<div class="soltar" aria-hidden="true">
+  <div class="soltar__marco">
+    <span class="soltar__icono" id="soltar-icono"></span>
+    <span>Suelta la musica aqui</span>
+  </div>
+</div>
+
+<script type="module" src="js/boot.js"></script>
 </body>
 </html>

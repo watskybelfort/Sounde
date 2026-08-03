@@ -77,6 +77,7 @@ function main() {
 
     mainWindow.webContents.once('did-finish-load', () => {
       abrirArchivos(archivosDeArgv(process.argv));
+      escaneoInicial();
     });
 
     app.on('activate', () => {
@@ -119,6 +120,31 @@ function archivosDeArgv(argv = []) {
       }
     })
     .map((a) => path.resolve(a));
+}
+
+/**
+ * Escaneo al arrancar.
+ *
+ * Es incremental, asi que sobre una biblioteca ya vista cuesta milisegundos.
+ * Sin esto, la musica que el usuario haya anadido a sus carpetas con la app
+ * cerrada no aparece hasta que se acuerde de pulsar "volver a escanear", que
+ * no se le va a ocurrir a nadie.
+ */
+async function escaneoInicial() {
+  const folders = settings.get('folders', []);
+  if (!folders.length || !library) return;
+
+  const enviar = (canal, datos) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(canal, datos);
+  };
+
+  try {
+    await library.scan(folders, (p) => enviar('library:progress', p));
+  } catch (err) {
+    console.error('[main] el escaneo inicial fallo:', err.message);
+  }
+  for (const track of library.all()) protocols.allowFile(track.path);
+  enviar('library:changed', { total: library.size() });
 }
 
 async function abrirArchivos(files) {
