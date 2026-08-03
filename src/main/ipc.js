@@ -5,7 +5,7 @@ const { ipcMain, dialog, shell, app } = require('electron');
 
 const { applyBackdrop, setMiniPlayer } = require('./window');
 const protocols = require('./protocols');
-const { AUDIO_EXTENSIONS } = require('./defaults');
+const { AUDIO_EXTENSIONS, EQ_BANDS, EQ_PRESETS } = require('./defaults');
 
 /**
  * Registra los handlers del proceso principal.
@@ -153,6 +153,17 @@ function registerIpc(ctx) {
   ipcMain.handle('app:info', () => ({
     version: app.getVersion(),
     userData: app.getPath('userData'),
+  }));
+
+  /**
+   * Las bandas del EQ y sus presets viven en defaults.js y viajan por aqui.
+   * El preload va en sandbox y no puede requerir archivos del proyecto, asi
+   * que la alternativa seria copiarlos en el renderer y verlos separarse.
+   */
+  ipcMain.handle('app:constants', () => ({
+    eqBands: EQ_BANDS,
+    eqPresets: EQ_PRESETS,
+    audioExtensions: AUDIO_EXTENSIONS,
   }));
 }
 

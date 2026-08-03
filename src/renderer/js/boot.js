@@ -3,6 +3,7 @@
  */
 
 import { initTitlebar } from './titlebar.js';
+import { crearMotor } from './engine.js';
 
 const MODOS = [
   ['acrylic', 'Acrilico'],
@@ -32,8 +33,43 @@ async function boot() {
 
   window.sounde.settings.onChange((patch) => aplicarAjustes(patch));
 
+  const motor = await crearMotor(ajustes);
+  engancharMotor(motor);
+
   pintarDiagnostico(ajustes);
   pintarModos(ajustes.backdrop);
+}
+
+/**
+ * Lo minimo para que la app ya sirva de algo mientras no esta la interfaz:
+ * abrir archivos desde el Explorador los pone a sonar y el titulo dice que
+ * suena. Todo lo demas cuelga de `motor`, que es lo que consumira la UI.
+ */
+function engancharMotor(motor) {
+  motor.queue.on('track', ({ track }) => {
+    setTexto('titulo-ahora', track ? `${track.artist} — ${track.title}` : 'Sounde');
+    document.title = track ? `${track.title} · Sounde` : 'Sounde';
+  });
+
+  motor.queue.on('skip', ({ track, message }) => {
+    console.warn('[cola] me salto', track?.title, '-', message);
+  });
+
+  window.sounde.app.onOpenFiles((tracks) => {
+    if (!tracks?.length) return;
+    motor.queue.setContext(tracks, { startIndex: 0 });
+  });
+
+  // Soltar archivos sobre la ventana. El navegador por defecto navegaria a
+  // ellos, que en una app de escritorio significa perder la interfaz entera.
+  document.addEventListener('dragover', (e) => e.preventDefault());
+  document.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    const rutas = window.sounde.library.pathsFromDrop(e.dataTransfer?.files ?? []);
+    if (!rutas.length) return;
+    const tracks = await window.sounde.library.addPaths(rutas);
+    if (tracks.length) motor.queue.setContext(tracks, { startIndex: 0 });
+  });
 }
 
 export function aplicarAjustes(ajustes) {

@@ -108,6 +108,26 @@ function registerHandlers() {
 }
 
 /**
+ * Cabeceras CORS.
+ *
+ * La pagina vive en `sounde://app` y el audio en `sounde-file://local`: son
+ * origenes distintos. Un <audio> normal sonaria igual, pero en cuanto entra
+ * en Web Audio a traves de createMediaElementSource, Chromium considera la
+ * fuente contaminada y el nodo saca silencio absoluto. Con `crossOrigin` en
+ * el elemento y este permiso en la respuesta, la fuente es limpia y suena.
+ *
+ * Lo mismo aplica a las caratulas: leer sus pixeles con getImageData para
+ * sacar el color dominante mancha el canvas si la imagen no es CORS-limpia.
+ *
+ * Abrir a `*` no afila nada: quien decide que se puede leer es isAuthorized,
+ * y ningun origen externo puede alcanzar estos esquemas.
+ */
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',
+};
+
+/**
  * Sirve un archivo con soporte de rangos.
  *
  * Los rangos no son opcionales: sin `206 Partial Content` el elemento
@@ -130,7 +150,7 @@ async function serveFile(target, request) {
   if (range && !parsed) {
     return new Response(null, {
       status: 416,
-      headers: { 'Content-Range': `bytes */${stat.size}` },
+      headers: { ...CORS, 'Content-Range': `bytes */${stat.size}` },
     });
   }
 
@@ -141,6 +161,7 @@ async function serveFile(target, request) {
   return new Response(Readable.toWeb(stream), {
     status: parsed ? 206 : 200,
     headers: {
+      ...CORS,
       'Content-Type': type,
       'Content-Length': String(end - start + 1),
       'Accept-Ranges': 'bytes',

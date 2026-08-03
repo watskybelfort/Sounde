@@ -74,6 +74,7 @@ contextBridge.exposeInMainWorld('sounde', {
   // --- App ----------------------------------------------------------------
   app: {
     info: () => ipcRenderer.invoke('app:info'),
+    constants: () => ipcRenderer.invoke('app:constants'),
     onOpenFiles: (h) => on('app:open-files', h),
   },
 
