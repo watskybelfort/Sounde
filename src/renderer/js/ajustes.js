@@ -307,6 +307,10 @@ export function crearAjustes({ motor, ajustes, shell }) {
     pintar();
 
     return seccion('Biblioteca', [
+      fila('Reproducir con un clic',
+        'Un clic en una cancion la pone a sonar. Apagado hace falta el doble clic, y el clic solo la selecciona.',
+        interruptor(estado.clickToPlay !== false, (v) => guardar({ clickToPlay: v }))),
+
       el('div', { class: 'ajustes__bloque' }, [
         lista,
         el('div', { class: 'ajustes__botones' }, [

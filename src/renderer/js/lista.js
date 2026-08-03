@@ -32,6 +32,15 @@ export function crearLista(opciones = {}) {
     onMover,
   } = opciones;
 
+  /**
+   * Si un clic solo selecciona o ademas reproduce.
+   *
+   * Se puede cambiar en caliente (`setUnClic`) porque el ajuste vive en el
+   * panel y la lista ya esta montada cuando se toca: rehacerla entera para
+   * esto perderia el sitio del desplazamiento y la seleccion.
+   */
+  let unClic = opciones.unClic ?? true;
+
   let todas = [];
   let visibles = [];
   let idActual = null;
@@ -265,6 +274,11 @@ export function crearLista(opciones = {}) {
     nodo.addEventListener('click', () => {
       seleccion = indiceActual;
       pintar();
+      // Con `unClic` puesto, el clic ya suena. El doble clic sigue atado
+      // igualmente: si no lo estuviera, quien tenga la costumbre de dar dos
+      // veces lanzaria la cancion, la reiniciaria en el acto, y pareceria que
+      // se ha trabado.
+      if (unClic) lanzar(indiceActual);
     });
     nodo.addEventListener('dblclick', () => lanzar(indiceActual));
 
@@ -339,6 +353,11 @@ export function crearLista(opciones = {}) {
     setFiltro(texto) {
       filtro = texto ?? '';
       aplicar();
+    },
+
+    /** No hace falta repintar: los oyentes leen la bandera al dispararse. */
+    setUnClic(valor) {
+      unClic = !!valor;
     },
 
     setOrden(por, dir) {

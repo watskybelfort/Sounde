@@ -55,6 +55,11 @@ const DEFAULT_SETTINGS = {
   view: 'songs',
   sidebarCollapsed: false,
   queueOpen: false,
+  // Un clic en la lista reproduce; apagado, hace falta el doble clic.
+  clickToPlay: true,
+  // Listas remotas que el usuario ha escondido, por servicio:
+  // { spotify: ['id', ...], youtube: [...] }
+  hiddenPlaylists: {},
 
   // --- Ventana ------------------------------------------------------------
   bounds: null,
