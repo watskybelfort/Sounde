@@ -14,9 +14,11 @@ export function initTitlebar() {
   const btnMin = document.getElementById('btn-minimizar');
   const btnMax = document.getElementById('btn-maximizar');
   const btnCerrar = document.getElementById('btn-cerrar');
+  const btnSalirMini = document.getElementById('btn-salir-mini');
 
   btnMin?.addEventListener('click', () => window.sounde.window.minimize());
   btnCerrar?.addEventListener('click', () => window.sounde.window.close());
+  btnSalirMini?.addEventListener('click', () => window.sounde.window.setMini(false));
   btnMax?.addEventListener('click', async () => {
     const maximized = await window.sounde.window.toggleMaximize();
     pintarMaximizar(btnMax, maximized);
@@ -27,6 +29,9 @@ export function initTitlebar() {
   // Doble clic en la zona arrastrable = maximizar, como cualquier ventana.
   document.querySelector('.titlebar')?.addEventListener('dblclick', async (e) => {
     if (e.target.closest('.titlebar__controles')) return;
+    // En mini la ventana no es maximizable: el doble clic ahi solo conseguiria
+    // que Windows la estirase por encima del alto clavado.
+    if (document.documentElement.dataset.mini === 'true') return;
     const maximized = await window.sounde.window.toggleMaximize();
     pintarMaximizar(btnMax, maximized);
   });

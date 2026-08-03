@@ -94,11 +94,31 @@
   background: #b0271a;
 }
 
-/* En mini-player la barra se encoge y se queda solo cerrar + salir. */
+/* Salir del mini vive en la barra de titulo porque el boton normal esta en
+   .extras, que en mini no se pinta: sin esto la unica salida seria Ctrl+M. */
+.titlebar__btn--mini {
+  display: none;
+}
+
+/* En mini-player la barra se encoge y se queda con lo justo. */
 :root[data-mini='true'] .titlebar {
-  height: 32px;
+  height: 30px;
+  padding-left: 10px;
+  gap: 8px;
 }
 
 :root[data-mini='true'] .titlebar__btn {
-  width: 38px;
+  width: 34px;
+}
+
+:root[data-mini='true'] .titlebar__btn--mini {
+  display: grid;
+}
+
+/* Maximizar no tiene sentido con el alto clavado, y el titulo centrado
+   repetiria lo que ya dice el transporte tres pixeles mas abajo. */
+:root[data-mini='true'] #btn-maximizar,
+:root[data-mini='true'] .titlebar__ahora,
+:root[data-mini='true'] .titlebar__marca span {
+  display: none;
 }

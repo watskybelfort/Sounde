@@ -38,7 +38,7 @@
 /* En mini-player desaparece todo menos el transporte. */
 :root[data-mini='true'] .app {
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: 32px minmax(0, 1fr);
+  grid-template-rows: 30px minmax(0, 1fr);
   grid-template-areas:
     'titulo'
     'transporte';

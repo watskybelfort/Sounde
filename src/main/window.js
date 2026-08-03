@@ -8,7 +8,11 @@ const ROOT = path.join(__dirname, '..', '..');
 const NATIVE_SCRIPT = path.join(ROOT, 'tools', 'acrylic-native.ps1');
 
 const MAIN_MIN = { width: 960, height: 640 };
-const MINI_SIZE = { width: 420, height: 132 };
+// 136 de alto = 30 de barra de titulo + 106 de transporte. El ancho da para
+// la caratula, dos lineas de texto y una barra de posicion que todavia se
+// puede pinchar; por debajo de ~400 la barra se queda en un muñon inutil.
+const MINI_SIZE = { width: 460, height: 136 };
+const MINI_MIN_WIDTH = 380;
 
 /** Estado del ultimo tamano "grande", para volver desde el mini-player. */
 let restoreBounds = null;
@@ -147,14 +151,22 @@ function setMiniPlayer(win, enabled) {
   if (win.isDestroyed()) return false;
   if (enabled) {
     if (win.isMaximized()) win.unmaximize();
-    restoreBounds = win.getBounds();
-    win.setMinimumSize(320, MINI_SIZE.height);
+    // Solo se apunta el tamano grande si veniamos de el. Entrar dos veces en
+    // mini guardaria las medidas del propio mini y ya no habria vuelta.
+    if (!isMini(win)) restoreBounds = win.getBounds();
+    win.setMinimumSize(MINI_MIN_WIDTH, MINI_SIZE.height);
+    // Ancho libre, alto clavado: la maqueta del mini es de dos filas fijas y
+    // estirarla en vertical solo reparte aire feo.
+    win.setMaximumSize(4096, MINI_SIZE.height);
     win.setSize(MINI_SIZE.width, MINI_SIZE.height, true);
     win.setAlwaysOnTop(true, 'floating');
     win.setMaximizable(false);
   } else {
     win.setAlwaysOnTop(false);
     win.setMaximizable(true);
+    // El orden importa: con el maximo todavia puesto en 136, el setSize de
+    // abajo se recorta contra el y la ventana vuelve del mini aplastada.
+    win.setMaximumSize(0, 0);
     win.setMinimumSize(MAIN_MIN.width, MAIN_MIN.height);
     const b = restoreBounds ?? { width: 1180, height: 760 };
     win.setSize(b.width, b.height, true);

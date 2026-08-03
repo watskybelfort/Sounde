@@ -282,21 +282,79 @@
 
 /* ------------------------------------------------------- mini-player */
 
+/*
+ * En 460x136 no cabe la fila de tres columnas del transporte grande. La
+ * reparticion util es otra: caratula alta a la izquierda, y a su derecha el
+ * texto arriba y los mandos abajo.
+ *
+ * `display: contents` sobre .ahora es lo que lo hace posible sin tocar el
+ * HTML: disuelve el contenedor y sus tres hijos pasan a ser celdas de la
+ * rejilla del transporte, que es justo lo que hace falta para que la
+ * caratula abarque las dos filas.
+ */
 :root[data-mini='true'] .transporte {
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 0 10px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    'arte textos fav'
+    'arte mandos mandos';
+  align-content: center;
+  column-gap: 12px;
+  row-gap: 6px;
+  padding: 0 14px;
   border-top: none;
   background: transparent;
+  /* La ventana no tiene marco y la barra de titulo es una franja de 30px:
+     sin esto solo se puede mover el mini agarrandolo por ahi. */
+  -webkit-app-region: drag;
+}
+
+:root[data-mini='true'] .ahora {
+  display: contents;
+}
+
+:root[data-mini='true'] .transporte button,
+:root[data-mini='true'] .transporte .barra {
+  -webkit-app-region: no-drag;
 }
 
 :root[data-mini='true'] .ahora__arte {
-  width: 44px;
-  height: 44px;
+  grid-area: arte;
+  width: 68px;
+  height: 68px;
+}
+
+:root[data-mini='true'] .ahora__textos {
+  grid-area: textos;
+}
+
+:root[data-mini='true'] .ahora__fav {
+  grid-area: fav;
+  align-self: start;
 }
 
 :root[data-mini='true'] .mandos {
-  align-items: flex-end;
+  grid-area: mandos;
+  gap: 2px;
+}
+
+/* Los mandos se aprietan: el play baja de 38 a 32 y los satelites de 32 a
+   28, que es lo que deja sitio a una barra de posicion aprovechable. */
+:root[data-mini='true'] .mandos__reproducir {
+  width: 32px;
+  height: 32px;
+  margin: 0 4px;
+  font-size: 12px;
+}
+
+:root[data-mini='true'] .mandos .icono-btn {
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+}
+
+:root[data-mini='true'] .mandos__tiempo {
+  gap: 8px;
 }
 
 :root[data-mini='true'] .extras {
