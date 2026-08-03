@@ -24,6 +24,7 @@ export const ICONO = {
   silencio: 0xe74f,
   musica: 0xe8d6,
   album: 0xe93c,
+  artista: 0xe77b,
   carpeta: 0xe8b7,
   anadir: 0xe710,
   abrir: 0xe8e5,

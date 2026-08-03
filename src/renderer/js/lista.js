@@ -18,7 +18,16 @@ export const COLUMNAS = [
 ];
 
 export function crearLista(opciones = {}) {
-  const { onReproducir, altoFila = 52 } = opciones;
+  const {
+    onReproducir,
+    altoFila = 52,
+    conCabecera = true,
+    // 'posicion' numera por el sitio en la lista; 'pista' usa el numero de
+    // pista del disco, que es lo unico que tiene sentido dentro de un album.
+    numerar = 'posicion',
+    conAlbum = true,
+    conArte = true,
+  } = opciones;
 
   let todas = [];
   let visibles = [];
@@ -31,8 +40,10 @@ export function crearLista(opciones = {}) {
 
   const filas = el('div', { class: 'lista__espacio' });
   const viewport = el('div', { class: 'lista__viewport', tabindex: '0' }, [filas]);
-  const cabecera = crearCabecera();
-  const raiz = el('div', { class: 'lista' }, [cabecera.nodo, viewport]);
+  const cabecera = conCabecera ? crearCabecera() : null;
+  const raiz = el('div', {
+    class: `lista${conAlbum ? '' : ' lista--sin-album'}${conArte ? '' : ' lista--sin-arte'}`,
+  }, [cabecera?.nodo, viewport]);
   raiz.style.setProperty('--alto-fila', `${altoFila}px`);
 
   viewport.addEventListener('scroll', pintar, { passive: true });
@@ -134,7 +145,7 @@ export function crearLista(opciones = {}) {
     seleccion = -1;
     viewport.scrollTop = 0;
     filas.style.setProperty('--filas', String(visibles.length));
-    cabecera.pintar();
+    cabecera?.pintar();
     pintar();
     opciones.onFiltrado?.(visibles);
   }
@@ -199,7 +210,7 @@ export function crearLista(opciones = {}) {
         nodo.style.setProperty('--i', String(indice));
         if (!track) return;
 
-        numero.textContent = String(indice + 1);
+        numero.textContent = String(numerar === 'pista' ? (track.trackNo ?? indice + 1) : indice + 1);
         titulo.textContent = track.title;
         artista.textContent = track.artist;
         album.textContent = track.album;
@@ -273,6 +284,13 @@ function coincide(track, texto) {
  */
 function comparar(a, b, por) {
   if (por === 'duration') return (a.duration || 0) - (b.duration || 0);
+
+  if (por === 'pista') {
+    const disco = (a.discNo || 0) - (b.discNo || 0);
+    if (disco) return disco;
+    const pista = (a.trackNo || 0) - (b.trackNo || 0);
+    if (pista) return pista;
+  }
 
   if (por === 'album') {
     const alb = texto(a.album).localeCompare(texto(b.album), 'es');

@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="styles/base.css">
   <link rel="stylesheet" href="styles/shell.css">
   <link rel="stylesheet" href="styles/lista.css">
+  <link rel="stylesheet" href="styles/vistas.css">
   <link rel="stylesheet" href="styles/titlebar.css">
   <link rel="stylesheet" href="styles/transport.css">
 </head>
@@ -59,6 +60,14 @@
         <span class="lateral__texto">Canciones</span>
         <span class="lateral__cuenta tabular" id="cuenta-canciones"></span>
       </button>
+      <button class="lateral__item" id="nav-albumes" aria-current="false">
+        <span class="lateral__icono" id="icono-albumes" aria-hidden="true"></span>
+        <span class="lateral__texto">Albumes</span>
+      </button>
+      <button class="lateral__item" id="nav-artistas" aria-current="false">
+        <span class="lateral__icono" id="icono-artistas" aria-hidden="true"></span>
+        <span class="lateral__texto">Artistas</span>
+      </button>
     </div>
 
     <div class="lateral__grupo">
@@ -87,18 +96,18 @@
         <h1 class="vista__titulo" id="vista-titulo">Canciones</h1>
         <div class="vista__resumen" id="vista-resumen">Sin musica todavia</div>
       </div>
-      <div class="vista__acciones">
+      <div class="vista__acciones" id="vista-acciones" data-ficha="false">
         <div class="escaneo" id="escaneo" hidden>
           <span id="escaneo-texto">Escaneando…</span>
           <div class="escaneo__barra"><div class="escaneo__relleno"></div></div>
         </div>
-        <label class="buscador">
+        <label class="buscador vista__solo-lista">
           <span class="buscador__icono" id="icono-buscar" aria-hidden="true"></span>
           <input class="buscador__campo" id="buscador" type="text" spellcheck="false"
                  placeholder="Buscar" aria-label="Buscar en la biblioteca">
         </label>
-        <button class="icono-btn" id="btn-tocar-todo" title="Reproducir todo" aria-label="Reproducir todo"></button>
-        <button class="icono-btn" id="btn-tocar-aleatorio" title="Reproducir en aleatorio" aria-label="Reproducir en aleatorio"></button>
+        <button class="icono-btn vista__solo-lista" id="btn-tocar-todo" title="Reproducir todo" aria-label="Reproducir todo"></button>
+        <button class="icono-btn vista__solo-lista" id="btn-tocar-aleatorio" title="Reproducir en aleatorio" aria-label="Reproducir en aleatorio"></button>
       </div>
     </header>
 

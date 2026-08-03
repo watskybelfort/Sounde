@@ -1,23 +1,43 @@
 /**
- * Estructura de la aplicacion: lateral, carpetas vigiladas, estado de la
- * biblioteca y la capa de arrastrar y soltar.
+ * Estructura de la aplicacion: lateral, vistas de la biblioteca, carpetas
+ * vigiladas y la capa de arrastrar y soltar.
+ *
+ * El estado de navegacion es un objeto plano `{ tipo, clave }` y una sola
+ * funcion lo pinta. Con un puñado de banderas booleanas repartidas, entrar
+ * en un album desde artistas y volver acaba dejando la cabecera diciendo una
+ * cosa y el cuerpo otra.
  */
 
 import { $, el, glifo, pintarGlifo, plural, formatoTiempo } from './dom.js';
 import { crearLista } from './lista.js';
+import { agruparAlbumes, agruparArtistas } from './agrupar.js';
+import {
+  rejilla, tarjetaAlbum, tarjetaArtista, fichaAlbum, fichaArtista,
+} from './vistas.js';
 
 const raiz = document.documentElement;
+
+const TITULOS = {
+  canciones: 'Canciones',
+  albumes: 'Albumes',
+  artistas: 'Artistas',
+};
 
 export function initShell(motor, ajustes = {}) {
   const { queue, player } = motor;
 
   const cuerpo = $('#vista-cuerpo');
+  const tituloVista = $('#vista-titulo');
   const resumen = $('#vista-resumen');
   const listaCarpetas = $('#lista-carpetas');
   const escaneo = $('#escaneo');
   const escaneoTexto = $('#escaneo-texto');
+  const acciones = $('#vista-acciones');
+  const buscador = $('#buscador');
 
   pintarGlifo($('#icono-canciones'), 'musica');
+  pintarGlifo($('#icono-albumes'), 'album');
+  pintarGlifo($('#icono-artistas'), 'artista');
   pintarGlifo($('#icono-anadir'), 'anadir');
   pintarGlifo($('#icono-abrir'), 'abrir');
   pintarGlifo($('#btn-reescanear'), 'refrescar');
@@ -27,44 +47,105 @@ export function initShell(motor, ajustes = {}) {
   pintarGlifo($('#btn-tocar-aleatorio'), 'aleatorio');
 
   let pistas = [];
+  let albumes = [];
+  let artistas = [];
+  let filtro = '';
+  let vista = { tipo: TITULOS[ajustes.view] ? ajustes.view : 'canciones' };
 
-  // --- Lista ----------------------------------------------------------------
+  // --- Listas ---------------------------------------------------------------
+
+  const reproducirDesde = (track, _i, visibles) => queue.setContext(visibles, { startId: track.id });
 
   const lista = crearLista({
-    // Reproducir desde la lista hace que la cola SEA la lista tal y como se
-    // ve: filtrada y ordenada. Encolar la biblioteca entera haria que la
-    // siguiente cancion saliera de la nada respecto a lo que hay en pantalla.
-    onReproducir: (track, _i, visibles) => queue.setContext(visibles, { startId: track.id }),
+    onReproducir: reproducirDesde,
     onOrden: ({ por, dir }) => window.sounde.settings.set({ sortBy: por, sortDir: dir }),
-    onFiltrado: (visibles) => pintarResumen(visibles),
+    onFiltrado: () => { if (vista.tipo === 'canciones') pintarResumen(); },
   });
-
   lista.setOrden(ajustes.sortBy, ajustes.sortDir);
 
-  const buscador = $('#buscador');
-  buscador.addEventListener('input', () => lista.setFiltro(buscador.value));
-  buscador.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    buscador.value = '';
-    lista.setFiltro('');
-    buscador.blur();
+  // Dentro de un album no hay nada que ordenar ni columna de album que
+  // enseñar: el orden es el del disco y el album es siempre el mismo.
+  const listaAlbum = crearLista({
+    onReproducir: reproducirDesde,
+    conCabecera: false,
+    conAlbum: false,
+    conArte: false,
+    numerar: 'pista',
+    altoFila: 42,
   });
+  listaAlbum.setOrden('pista', 'asc');
 
-  $('#btn-tocar-todo').addEventListener('click', () => {
-    if (!lista.visibles.length) return;
-    queue.setShuffle(false);
-    queue.setContext(lista.visibles, { startIndex: 0 });
-  });
-
-  $('#btn-tocar-aleatorio').addEventListener('click', () => {
-    if (!lista.visibles.length) return;
-    queue.setShuffle(true);
-    queue.setContext(lista.visibles, { startIndex: Math.floor(Math.random() * lista.visibles.length) });
-  });
-
-  const marcarActual = () => lista.setActual(player.track?.id ?? null, player.playing);
+  const marcarActual = () => {
+    const id = player.track?.id ?? null;
+    lista.setActual(id, player.playing);
+    listaAlbum.setActual(id, player.playing);
+  };
   player.on('trackchange', marcarActual);
   player.on('state', marcarActual);
+
+  // --- Navegacion -----------------------------------------------------------
+
+  const navs = {
+    canciones: $('#nav-canciones'),
+    albumes: $('#nav-albumes'),
+    artistas: $('#nav-artistas'),
+  };
+
+  for (const [tipo, boton] of Object.entries(navs)) {
+    boton.addEventListener('click', () => ir({ tipo }));
+  }
+
+  /**
+   * Pila de navegacion. Sin ella, entrar en un album desde la ficha de un
+   * artista y volver te deja en la rejilla de albumes, que no es de donde
+   * venias: se pierde el sitio y hay que rehacer el camino.
+   */
+  const historial = [];
+
+  function ir(nueva) {
+    // Volver a una vista principal reinicia el camino: no tiene sentido
+    // acumular pasos que ya no llevan a ningun sitio.
+    historial.length = 0;
+    aplicarVista(nueva);
+  }
+
+  function abrir(ficha) {
+    historial.push(vista);
+    aplicarVista(ficha);
+  }
+
+  function volver() {
+    aplicarVista(historial.pop() ?? { tipo: base() });
+  }
+
+  function aplicarVista(nueva) {
+    vista = nueva;
+    filtro = '';
+    buscador.value = '';
+    lista.setFiltro('');
+    if (TITULOS[nueva.tipo]) window.sounde.settings.set({ view: nueva.tipo });
+    pintarCuerpo();
+  }
+
+  function etiquetaDe(v) {
+    if (!v) return TITULOS[base()];
+    if (v.tipo === 'album') return v.clave.titulo;
+    if (v.tipo === 'artista') return v.clave.nombre;
+    return TITULOS[v.tipo];
+  }
+
+  /**
+   * La seccion en la que se esta navegando, para marcar el lateral y titular
+   * la cabecera. Manda el fondo de la pila, no el tipo de la ficha abierta:
+   * si entraste por Artistas y desde ahi a un album, sigues en Artistas, y
+   * ver el lateral saltar a Albumes se siente como haber cambiado de sitio
+   * sin haberlo pedido.
+   */
+  function base() {
+    const inicio = historial[0] ?? vista;
+    if (TITULOS[inicio.tipo]) return inicio.tipo;
+    return vista.tipo === 'album' ? 'albumes' : vista.tipo === 'artista' ? 'artistas' : 'canciones';
+  }
 
   // --- Lateral --------------------------------------------------------------
 
@@ -104,6 +185,44 @@ export function initShell(motor, ajustes = {}) {
     await refrescar();
   });
 
+  // --- Buscador y acciones de cabecera --------------------------------------
+
+  buscador.addEventListener('input', () => {
+    filtro = buscador.value;
+    if (vista.tipo === 'canciones') lista.setFiltro(filtro);
+    else pintarCuerpo();
+  });
+
+  buscador.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    buscador.value = '';
+    filtro = '';
+    if (vista.tipo === 'canciones') lista.setFiltro('');
+    else pintarCuerpo();
+    buscador.blur();
+  });
+
+  $('#btn-tocar-todo').addEventListener('click', () => reproducir(loQueSeVe(), false));
+  $('#btn-tocar-aleatorio').addEventListener('click', () => reproducir(loQueSeVe(), true));
+
+  /** Las pistas de la vista actual, respetando el filtro. */
+  function loQueSeVe() {
+    if (vista.tipo === 'canciones') return lista.visibles;
+    if (vista.tipo === 'albumes') return albumesFiltrados().flatMap((a) => a.pistas);
+    if (vista.tipo === 'artistas') return artistasFiltrados().flatMap((a) => a.pistas);
+    if (vista.tipo === 'album') return vista.clave?.pistas ?? [];
+    if (vista.tipo === 'artista') return vista.clave?.pistas ?? [];
+    return pistas;
+  }
+
+  function reproducir(lote, aleatorio) {
+    if (!lote?.length) return;
+    queue.setShuffle(!!aleatorio);
+    queue.setContext(lote, {
+      startIndex: aleatorio ? Math.floor(Math.random() * lote.length) : 0,
+    });
+  }
+
   // --- Progreso del escaneo -------------------------------------------------
 
   window.sounde.library.onProgress((p) => {
@@ -116,8 +235,7 @@ export function initShell(motor, ajustes = {}) {
       return;
     }
     delete escaneo.dataset.indeterminado;
-    const fraccion = p.total ? p.done / p.total : 0;
-    escaneo.style.setProperty('--valor', String(fraccion));
+    escaneo.style.setProperty('--valor', String(p.total ? p.done / p.total : 0));
     escaneoTexto.textContent = `Leyendo etiquetas… ${p.done} de ${p.total}`;
   });
 
@@ -160,18 +278,47 @@ export function initShell(motor, ajustes = {}) {
     await refrescar();
   });
 
-  // --- Pintado --------------------------------------------------------------
+  // --- Datos ----------------------------------------------------------------
 
   async function refrescar() {
     pistas = await window.sounde.library.all();
     const carpetas = await window.sounde.library.folders();
     escaneo.hidden = true;
+
+    albumes = agruparAlbumes(pistas);
+    artistas = agruparArtistas(pistas);
+
+    // Una ficha abierta puede haber dejado de existir tras un reescaneo.
+    if (vista.tipo === 'album') vista = revalidar(albumes, 'albumes');
+    else if (vista.tipo === 'artista') vista = revalidar(artistas, 'artistas');
+
     pintarCarpetas(carpetas);
     lista.setPistas(pistas);
     marcarActual();
     pintarCuerpo();
     return pistas;
   }
+
+  function revalidar(coleccion, vuelta) {
+    const encontrado = coleccion.find((x) => x.clave === vista.clave?.clave);
+    return encontrado ? { tipo: vista.tipo, clave: encontrado } : { tipo: vuelta };
+  }
+
+  const texto = (v) => String(v ?? '').toLowerCase();
+
+  function albumesFiltrados() {
+    const q = filtro.trim().toLowerCase();
+    if (!q) return albumes;
+    return albumes.filter((a) => texto(a.titulo).includes(q) || texto(a.artista).includes(q));
+  }
+
+  function artistasFiltrados() {
+    const q = filtro.trim().toLowerCase();
+    if (!q) return artistas;
+    return artistas.filter((a) => texto(a.nombre).includes(q));
+  }
+
+  // --- Pintado --------------------------------------------------------------
 
   function pintarCarpetas(carpetas) {
     listaCarpetas.replaceChildren(...carpetas.map((ruta) => {
@@ -193,37 +340,121 @@ export function initShell(motor, ajustes = {}) {
     }));
   }
 
-  function pintarResumen(visibles = pistas) {
-    const total = visibles.reduce((s, t) => s + (t.duration || 0), 0);
-    const filtrando = visibles.length !== pistas.length;
-    resumen.textContent = !pistas.length
-      ? 'Sin musica todavia'
-      : `${plural(visibles.length, 'cancion', 'canciones')}${filtrando ? ` de ${pistas.length}` : ''} · ${formatoTiempo(total)}`;
-
+  function pintarResumen() {
     const cuenta = $('#cuenta-canciones');
     if (cuenta) cuenta.textContent = pistas.length ? String(pistas.length) : '';
 
-    // Buscar y no encontrar nada tiene que decirlo: una lista vacia sin
-    // explicacion se lee como que la biblioteca se ha perdido.
-    const sinResultados = pistas.length > 0 && visibles.length === 0;
-    $('#btn-tocar-todo').disabled = !visibles.length;
-    $('#btn-tocar-aleatorio').disabled = !visibles.length;
-    if (cuerpo.dataset.modo === 'lista') {
-      cuerpo.dataset.vacio = String(sinResultados);
+    if (!pistas.length) {
+      resumen.textContent = 'Sin musica todavia';
+      return;
     }
+
+    if (vista.tipo === 'canciones') {
+      const visibles = lista.visibles;
+      const total = visibles.reduce((s, t) => s + (t.duration || 0), 0);
+      const filtrando = visibles.length !== pistas.length;
+      resumen.textContent = `${plural(visibles.length, 'cancion', 'canciones')}` +
+        `${filtrando ? ` de ${pistas.length}` : ''} · ${formatoTiempo(total)}`;
+      cuerpo.dataset.vacio = String(visibles.length === 0);
+      return;
+    }
+
+    if (vista.tipo === 'albumes') {
+      resumen.textContent = plural(albumesFiltrados().length, 'album', 'albumes');
+      return;
+    }
+    if (vista.tipo === 'artistas') {
+      resumen.textContent = plural(artistasFiltrados().length, 'artista', 'artistas');
+      return;
+    }
+    // En una ficha la cabecera calla: el titulo grande, el artista, el año y
+    // la duracion ya estan a dos centimetros, repetirlos es ruido.
+    resumen.textContent = '';
   }
 
   function pintarCuerpo() {
+    const enFicha = vista.tipo === 'album' || vista.tipo === 'artista';
+
+    for (const [tipo, boton] of Object.entries(navs)) {
+      boton.setAttribute('aria-current', String(tipo === base()));
+    }
+    tituloVista.textContent = TITULOS[base()];
+    acciones.dataset.ficha = String(enFicha);
+
     if (!pistas.length) {
       cuerpo.dataset.modo = 'vacio';
       cuerpo.replaceChildren(vacio());
+      pintarResumen();
       return;
     }
-    if (cuerpo.dataset.modo !== 'lista') {
-      cuerpo.dataset.modo = 'lista';
-      cuerpo.replaceChildren(lista.nodo, sinResultados());
+
+    if (vista.tipo === 'canciones') pintarCanciones();
+    else if (vista.tipo === 'albumes') pintarRejillaAlbumes();
+    else if (vista.tipo === 'artistas') pintarRejillaArtistas();
+    else if (vista.tipo === 'album') pintarFichaAlbum();
+    else pintarFichaArtista();
+
+    pintarResumen();
+  }
+
+  function pintarCanciones() {
+    cuerpo.dataset.modo = 'lista';
+    cuerpo.replaceChildren(lista.nodo, sinResultados());
+  }
+
+  function pintarRejillaAlbumes() {
+    cuerpo.dataset.modo = 'rejilla';
+    const lote = albumesFiltrados();
+    if (!lote.length) {
+      cuerpo.replaceChildren(sinResultados());
+      return;
     }
-    pintarResumen(lista.visibles);
+    cuerpo.replaceChildren(rejilla(lote.map((album) => tarjetaAlbum(album, {
+      onAbrir: () => abrir({ tipo: 'album', clave: album }),
+      onReproducir: () => reproducir(album.pistas, false),
+    }))));
+  }
+
+  function pintarRejillaArtistas() {
+    cuerpo.dataset.modo = 'rejilla';
+    const lote = artistasFiltrados();
+    if (!lote.length) {
+      cuerpo.replaceChildren(sinResultados());
+      return;
+    }
+    cuerpo.replaceChildren(rejilla(lote.map((artista) => tarjetaArtista(artista, {
+      onAbrir: () => abrir({ tipo: 'artista', clave: artista }),
+      onReproducir: () => reproducir(artista.pistas, false),
+    }))));
+  }
+
+  function pintarFichaAlbum() {
+    const album = vista.clave;
+    cuerpo.dataset.modo = 'detalle';
+    const unSoloArtista = album.pistas.every((t) => t.artist === album.pistas[0].artist);
+    listaAlbum.nodo.classList.toggle('lista--sin-artista', unSoloArtista);
+    listaAlbum.setPistas(album.pistas);
+    listaAlbum.setActual(player.track?.id ?? null, player.playing);
+    cuerpo.replaceChildren(fichaAlbum(album, {
+      onVolver: volver,
+      volverA: etiquetaDe(historial[historial.length - 1]),
+      onReproducir: () => reproducir(album.pistas, false),
+      onAleatorio: () => reproducir(album.pistas, true),
+      listaNodo: listaAlbum.nodo,
+    }));
+  }
+
+  function pintarFichaArtista() {
+    const artista = vista.clave;
+    cuerpo.dataset.modo = 'rejilla';
+    cuerpo.replaceChildren(fichaArtista(artista, {
+      onVolver: volver,
+      volverA: etiquetaDe(historial[historial.length - 1]),
+      onReproducir: () => reproducir(artista.pistas, false),
+      onAleatorio: () => reproducir(artista.pistas, true),
+      onAbrirAlbum: (album) => abrir({ tipo: 'album', clave: album }),
+      onReproducirAlbum: (album) => reproducir(album.pistas, false),
+    }));
   }
 
   function sinResultados() {
@@ -268,7 +499,7 @@ export function initShell(motor, ajustes = {}) {
     ]);
   }
 
-  return { refrescar, lista, get pistas() { return pistas; } };
+  return { refrescar, ir, lista, get pistas() { return pistas; } };
 }
 
 /** Un arrastre de texto dentro de la app no debe encender la capa. */

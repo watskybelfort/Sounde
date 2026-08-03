@@ -1,0 +1,272 @@
+/* ============================================================================
+ * SOUNDE · REJILLAS Y DETALLE
+ * Albumes y artistas: cuadricula de caratulas y su ficha.
+ * ==========================================================================*/
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(164px, 1fr));
+  gap: 20px 16px;
+  padding: 6px 2px 24px;
+}
+
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 0;
+  border-radius: var(--radio-2);
+  text-align: left;
+  color: inherit;
+}
+
+.tarjeta__arte {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radio-2);
+  border: 1px solid var(--realce-borde);
+  background: var(--vidrio-2);
+  overflow: hidden;
+  box-shadow: var(--sombra-1);
+  transition: box-shadow var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
+}
+
+.tarjeta:hover .tarjeta__arte {
+  transform: translateY(-3px);
+  box-shadow: var(--sombra-2);
+}
+
+.tarjeta__arte img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tarjeta__arte::after {
+  content: '\E93C';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--texto-3);
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 32px;
+}
+
+.tarjeta__arte[data-con-arte='true']::after {
+  content: none;
+}
+
+/* Boton de reproducir que asoma al pasar por encima. Es el gesto de todos
+   los reproductores modernos: abrir el album y reproducirlo son dos deseos
+   distintos y no deberian compartir el mismo clic. */
+.tarjeta__play {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radio-full);
+  background: rgb(var(--acento));
+  color: #0b0e13;
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 15px;
+  box-shadow: var(--sombra-2);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out),
+              background var(--dur-paleta) var(--ease-in-out);
+}
+
+.tarjeta:hover .tarjeta__play,
+.tarjeta__play:focus-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tarjeta__play:hover {
+  transform: scale(1.07);
+}
+
+.tarjeta__titulo {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tarjeta__sub {
+  font-size: 11.5px;
+  color: var(--texto-3);
+}
+
+/* Artistas: caratula redonda, que es como se distingue de un album de un
+   vistazo sin tener que leer el titulo de la vista. */
+.tarjeta--redonda .tarjeta__arte {
+  border-radius: var(--radio-full);
+}
+
+.tarjeta--redonda .tarjeta__arte::after {
+  content: '\E77B';
+}
+
+.tarjeta--redonda .tarjeta__titulo,
+.tarjeta--redonda .tarjeta__sub {
+  text-align: center;
+}
+
+/* ------------------------------------------------------------- ficha */
+
+.detalle {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.detalle__cabecera {
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  padding: 4px 2px 20px;
+}
+
+.detalle__arte {
+  position: relative;
+  flex: 0 0 auto;
+  width: 176px;
+  height: 176px;
+  border-radius: var(--radio-2);
+  border: 1px solid var(--realce-borde);
+  background: var(--vidrio-2);
+  overflow: hidden;
+  box-shadow: var(--sombra-2);
+}
+
+.detalle__arte img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detalle--artista .detalle__arte {
+  border-radius: var(--radio-full);
+}
+
+.detalle__info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.detalle__tipo {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--texto-3);
+}
+
+.detalle__titulo {
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+.detalle__meta {
+  font-size: 12.5px;
+  color: var(--texto-2);
+}
+
+.detalle__acciones {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.detalle__cuerpo {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.detalle__seccion {
+  margin-top: 10px;
+}
+
+.detalle__seccion-titulo {
+  padding: 0 2px 8px;
+  font-size: 13px;
+  color: var(--texto-2);
+}
+
+/* Dentro de una ficha, buscar y "reproducir todo" sobran: la ficha ya trae
+   sus propios botones y buscar ahi confunde sobre que se esta filtrando. */
+.vista__acciones[data-ficha='true'] .vista__solo-lista {
+  display: none;
+}
+
+/* Volver */
+
+.volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 12px 0 8px;
+  border-radius: var(--radio-full);
+  color: var(--texto-2);
+  font-size: 12.5px;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+.volver:hover {
+  background: var(--hover);
+  color: var(--texto);
+}
+
+.volver__icono {
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 12px;
+}
+
+/* Las rejillas y las fichas SI desplazan con el cuerpo de la vista; solo la
+   lista virtualizada trae su propio scroll. */
+.vista__cuerpo[data-modo='rejilla'] {
+  overflow-y: auto;
+}
+
+.vista__cuerpo[data-modo='detalle'] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.vista__cuerpo[data-modo='detalle'] .lista {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Dentro de un album sobra la columna de album: es la misma en todas. */
+.lista--sin-album .lista__cabecera,
+.lista--sin-album .fila {
+  grid-template-columns: 40px minmax(0, 1fr) 64px;
+}
+
+.lista--sin-album .fila__album {
+  display: none;
+}
+
+/* Y dentro de un album la miniatura es la misma en las doce filas: solo
+   ocupa sitio y no distingue nada. */
+.lista--sin-arte .fila__arte {
+  display: none;
+}
+
+/* En un album de un solo artista, repetir su nombre en cada fila no informa
+   de nada. En un recopilatorio si, y por eso se decide pista a pista. */
+.lista--sin-artista .fila__artista {
+  display: none;
+}
