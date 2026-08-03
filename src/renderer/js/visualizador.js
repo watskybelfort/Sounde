@@ -194,6 +194,9 @@ export function crearVisualizador(player, { modo = 'bars' } = {}) {
       modo = nuevo || 'off';
       alturas = [];
       lienzo.hidden = modo === 'off';
+      // El modo queda escrito en el nodo: es el unico sitio donde se puede
+      // mirar desde fuera que esta dibujando, sin sondas ni variables sueltas.
+      lienzo.dataset.modo = modo;
       if (modo === 'off') {
         parar();
         limpiar();

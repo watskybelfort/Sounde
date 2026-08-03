@@ -23,6 +23,11 @@ export function initAtajos(acciones, { alPulsar } = {}) {
     // atajo global a alguien que esta confirmando un borrado es peligroso.
     if (document.querySelector('.dialogo-capa, .menu')) return;
 
+    // El panel de ajustes es como la paleta: solo responde el suyo, que sirve
+    // para cerrarlo. Si no, la 'm' de un campo o la barra espaciadora sobre un
+    // deslizador harian dos cosas a la vez.
+    const enAjustes = !!document.querySelector('.ajustes-capa');
+
     // La paleta de comandos es una excepcion parcial: mientras esta abierta
     // solo responde su propio atajo, que sirve para cerrarla.
     const enPaleta = !!document.querySelector('.comandos-capa');
@@ -32,6 +37,7 @@ export function initAtajos(acciones, { alPulsar } = {}) {
     for (const accion of porTecla) {
       if (!coincide(evento, accion.tecla)) continue;
       if (enPaleta && !accion.siempre) continue;
+      if (enAjustes && accion.id !== 'ajustes') continue;
 
       // Los atajos sin modificador solo valen fuera de un campo de texto. Los
       // que llevan Ctrl si funcionan siempre: Ctrl+F para buscar tiene que

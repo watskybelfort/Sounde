@@ -1,0 +1,360 @@
+/* ============================================================================
+ * SOUNDE · AJUSTES
+ * Hoja modal con secciones. Los controles se aplican al soltar.
+ * ==========================================================================*/
+
+.ajustes-capa {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  display: grid;
+  place-items: center;
+  /* Oscurecer, no difuminar: la ventana entera ya es vidrio y otro
+     desenfoque encima la convierte en una mancha. Mas oscuro que el de los
+     dialogos porque esta hoja es grande y con poco velo la lista de detras
+     se lee a traves del panel. */
+  background: rgb(0 0 0 / 0.56);
+  animation: dialogo-fondo var(--dur-2) var(--ease-out);
+}
+
+.ajustes {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, calc(100vw - 56px));
+  max-height: min(760px, calc(100vh - 72px));
+  animation: dialogo-entra var(--dur-2) var(--ease-out);
+}
+
+.ajustes__cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--realce-borde);
+}
+
+.ajustes__titulo {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.ajustes__cuerpo {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 18px 18px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--realce-borde-fuerte) transparent;
+}
+
+/* ------------------------------------------------------------- secciones */
+
+.ajustes__seccion + .ajustes__seccion {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--realce-borde);
+}
+
+.ajustes__seccion-titulo {
+  margin: 14px 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--texto-3);
+}
+
+.ajustes__fila {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 11px 0;
+}
+
+.ajustes__fila + .ajustes__fila {
+  border-top: 1px solid rgb(255 255 255 / 0.045);
+}
+
+.ajustes__texto {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ajustes__nombre {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* La linea de ayuda no es decoracion: la mitad de estos ajustes no se
+   entienden por el nombre (¿que veladura, la de Windows o la de la pagina?)
+   y sin explicarlo nadie los toca. */
+.ajustes__ayuda {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--texto-3);
+}
+
+.ajustes__control {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ajustes__bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px 0 4px;
+}
+
+.ajustes__botones {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---------------------------------------------------------- interruptor */
+
+.interruptor {
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.interruptor__casilla {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.interruptor__pista {
+  display: flex;
+  align-items: center;
+  width: 40px;
+  height: 21px;
+  padding: 2px;
+  border-radius: var(--radio-full);
+  border: 1px solid var(--realce-borde-fuerte);
+  background: rgb(0 0 0 / 0.3);
+  transition: background var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+}
+
+.interruptor__pomo {
+  width: 15px;
+  height: 15px;
+  border-radius: var(--radio-full);
+  background: var(--texto-3);
+  transition: transform var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
+}
+
+.interruptor__casilla:checked + .interruptor__pista {
+  background: rgb(var(--acento) / 0.9);
+  border-color: transparent;
+}
+
+.interruptor__casilla:checked + .interruptor__pista .interruptor__pomo {
+  transform: translateX(19px);
+  background: #0b0e13;
+}
+
+.interruptor__casilla:focus-visible + .interruptor__pista {
+  outline: 2px solid rgb(var(--acento));
+  outline-offset: 2px;
+}
+
+/* ----------------------------------------------------------- deslizador */
+
+.deslizador {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.deslizador__valor {
+  min-width: 62px;
+  text-align: right;
+  font-size: 11.5px;
+  color: var(--texto-3);
+}
+
+.deslizador__rango {
+  width: 168px;
+}
+
+/* Un range nativo con la piel de la casa. Aqui no hacen falta las tres capas
+   de la barra del transporte, asi que no se repite aquel componente. */
+input[type='range'] {
+  appearance: none;
+  height: 16px;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--radio-full);
+  background: rgb(255 255 255 / 0.13);
+}
+
+input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -4.5px;
+  border-radius: var(--radio-full);
+  background: #fff;
+  box-shadow: var(--sombra-1);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+input[type='range']:hover::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+input[type='range']:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid rgb(var(--acento));
+  outline-offset: 2px;
+}
+
+/* ----------------------------------------------------------- segmentado */
+
+.segmentado {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radio-2);
+  border: 1px solid var(--realce-borde);
+  background: rgb(0 0 0 / 0.24);
+}
+
+.segmentado--envuelto {
+  flex-wrap: wrap;
+}
+
+.segmentado__opcion {
+  padding: 5px 11px;
+  border-radius: calc(var(--radio-2) - 3px);
+  font-size: 12px;
+  color: var(--texto-3);
+  white-space: nowrap;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+.segmentado__opcion:hover {
+  background: var(--hover);
+  color: var(--texto-2);
+}
+
+.segmentado__opcion[aria-pressed='true'] {
+  background: rgb(var(--acento) / 0.9);
+  color: #0b0e13;
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------- ecualizador */
+
+.eq {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 10px 4px 2px;
+  border-radius: var(--radio-2);
+  border: 1px solid var(--realce-borde);
+  background: rgb(0 0 0 / 0.2);
+}
+
+.eq__banda-caja {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+/*
+ * Deslizador vertical girando uno horizontal.
+ *
+ * Lo elegante seria `writing-mode: vertical-lr`, y no funciona: en cuanto se
+ * pone `appearance: none` para poder pintar la pista y el pomo, Chromium deja
+ * de tratar el control como vertical y el pomo se queda clavado en medio. Se
+ * vio en una captura, con las diez bandas a la misma altura mientras las
+ * etiquetas decian de +6 a -9.
+ *
+ * El giro no afecta al reparto del espacio, asi que la caja de alrededor es
+ * la que reserva el hueco.
+ */
+.eq__ranura {
+  position: relative;
+  width: 20px;
+  height: 112px;
+}
+
+/*
+ * Colocado en absoluto y no centrado por la rejilla: la caja del control mide
+ * 108 de ancho dentro de una celda de 20, y centrar algo que desborda su
+ * celda no se comporta igual en todas partes. Se vio en una captura, con las
+ * diez columnas 44 pixeles a la derecha de su etiqueta (justo la mitad de lo
+ * que sobra). Asi el centro es el centro y no hay nada que interpretar.
+ */
+.eq__banda {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 108px;
+  height: 16px;
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+
+.eq__db,
+.eq__hz {
+  font-size: 10px;
+  color: var(--texto-3);
+  white-space: nowrap;
+}
+
+.eq__db {
+  font-weight: 600;
+  color: var(--texto-2);
+}
+
+/* ------------------------------------------------------------- carpetas */
+
+.ajustes__carpetas {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ajustes__carpeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--radio-1);
+  font-size: 12.5px;
+  color: var(--texto-2);
+}
+
+.ajustes__carpeta:hover {
+  background: var(--hover);
+}
+
+.ajustes__carpeta-icono {
+  flex: 0 0 auto;
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 14px;
+  color: var(--texto-3);
+}
+
+.ajustes__carpeta-ruta {
+  flex: 1;
+  min-width: 0;
+  direction: rtl;      /* rutas largas: interesa ver el final, no el C:\ */
+  text-align: left;
+}

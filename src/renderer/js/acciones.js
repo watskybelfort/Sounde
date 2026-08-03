@@ -9,7 +9,7 @@
  */
 
 export function crearAcciones(ctx) {
-  const { motor, shell, favoritos, cola, temporizador, raiz } = ctx;
+  const { motor, shell, favoritos, cola, temporizador, ajustes, raiz } = ctx;
   const { player, queue } = motor;
 
   // El temporizador entra por la paleta y no por atajos: se pone una vez al
@@ -229,6 +229,17 @@ export function crearAcciones(ctx) {
       tecla: { key: 'b', ctrl: true },
       atajo: 'Ctrl + B',
       ejecutar: () => document.querySelector('#btn-plegar')?.click(),
+    },
+    {
+      id: 'ajustes',
+      texto: 'Abrir los ajustes',
+      icono: 'ajustes',
+      grupo: 'Ventana',
+      // Ctrl+, es lo que usa medio Windows para esto y nadie tiene que
+      // aprenderselo.
+      tecla: { key: ',', ctrl: true },
+      atajo: 'Ctrl + ,',
+      ejecutar: () => ajustes?.alternar(),
     },
 
     // --- Temporizador -------------------------------------------------------

@@ -17,6 +17,7 @@ import { crearComandos } from './comandos.js';
 import { initSesionMedios } from './mediasession.js';
 import { initBarraTareas } from './barratareas.js';
 import { crearTemporizador, formatoCuenta } from './temporizador.js';
+import { crearAjustes } from './ajustes.js';
 import { $, el, glifo, pintarGlifo } from './dom.js';
 
 const raiz = document.documentElement;
@@ -54,8 +55,14 @@ async function boot() {
   });
 
   const temporizador = engancharTemporizador(motor);
+  const panelAjustes = crearAjustes({ motor, ajustes, shell });
 
-  const acciones = crearAcciones({ motor, shell, favoritos, cola, temporizador, raiz });
+  pintarGlifo($('#icono-ajustes'), 'ajustes');
+  $('#btn-ajustes').addEventListener('click', () => panelAjustes.alternar());
+
+  const acciones = crearAcciones({
+    motor, shell, favoritos, cola, temporizador, ajustes: panelAjustes, raiz,
+  });
   const comandos = crearComandos({ acciones, shell, motor, favoritos, listas });
 
   // La paleta se anade al catalogo despues de crearla porque necesita el
