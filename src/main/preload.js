@@ -132,17 +132,19 @@ contextBridge.exposeInMainWorld('sounde', {
    * desde el proceso principal, que es lo que permite dejar la CSP sin
    * `connect-src`.
    */
-  spotify: {
-    estado: () => ipcRenderer.invoke('sp:state'),
-    setClientId: (valor) => ipcRenderer.invoke('sp:set-client-id', valor),
-    conectar: () => ipcRenderer.invoke('sp:connect'),
-    desconectar: () => ipcRenderer.invoke('sp:disconnect'),
-    sincronizar: () => ipcRenderer.invoke('sp:sync'),
-    cancelar: () => ipcRenderer.invoke('sp:cancel-sync'),
-    listas: () => ipcRenderer.invoke('sp:playlists'),
-    lista: (id) => ipcRenderer.invoke('sp:playlist', id),
-    onProgreso: (h) => on('sp:progress', h),
-    onCambio: (h) => on('sp:changed', h),
+  servicios: {
+    todos: () => ipcRenderer.invoke('svc:all'),
+    estado: (svc) => ipcRenderer.invoke('svc:state', svc),
+    setClientId: (svc, valor) => ipcRenderer.invoke('svc:set-client-id', svc, valor),
+    setClientSecret: (svc, valor) => ipcRenderer.invoke('svc:set-client-secret', svc, valor),
+    conectar: (svc) => ipcRenderer.invoke('svc:connect', svc),
+    desconectar: (svc) => ipcRenderer.invoke('svc:disconnect', svc),
+    sincronizar: (svc) => ipcRenderer.invoke('svc:sync', svc),
+    cancelar: (svc) => ipcRenderer.invoke('svc:cancel-sync', svc),
+    listas: (svc) => ipcRenderer.invoke('svc:playlists', svc),
+    lista: (svc, id) => ipcRenderer.invoke('svc:playlist', svc, id),
+    onProgreso: (h) => on('svc:progress', h),
+    onCambio: (h) => on('svc:changed', h),
   },
 
   // --- Letras ---------------------------------------------------------------

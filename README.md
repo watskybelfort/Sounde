@@ -21,11 +21,11 @@ cambió de fecha o de tamaño, así que sobre una biblioteca ya vista el arranqu
 cuesta milisegundos. Canciones, álbumes, artistas, favoritos, recientes y
 listas de reproducción, con importación y exportación en `.m3u`.
 
-**Spotify.** Conectas la cuenta y tus listas y tus me gusta aparecen junto a
-la música local, con una cuenta al lado de cada una: cuántas de esas canciones
-ya tienes en el disco. Las que tienes suenan por el motor de siempre, con
+**Spotify y YouTube.** Conectas la cuenta y tus listas aparecen junto a la
+música local, con una cuenta al lado de cada una: cuántas de esas canciones ya
+tienes en el disco. Las que tienes suenan por el motor de siempre, con
 ecualizador, fundido y visualizador. Las que no, se ven igual pero apagadas.
-Más abajo está [por qué no reproduce de Spotify](#lo-que-no-hace-y-por-qué).
+Más abajo está [por qué no reproduce de esos servicios](#lo-que-no-hace-y-por-qué).
 
 **Letras.** Un `.lrc` al lado del archivo o las etiquetas del propio archivo.
 Si llevan tiempos, la línea que suena se resalta y pulsándola se salta ahí.
@@ -55,12 +55,22 @@ Para trastear sin instalar nada: `npm start`.
 
 ---
 
-## Spotify: catálogo sí, audio no
+## Servicios: catálogo sí, audio no
+
+Hay dos conectables, Spotify y YouTube, y funcionan igual porque comparten
+casi todo el código: lo que cambia entre uno y otro (cómo se autoriza, cómo se
+pide, cómo se limpia lo que devuelve) vive en su carpeta, y a partir de ahí una
+lista de YouTube y una de Spotify son la misma cosa.
+
+**Cuál elegir, si solo vas a poner uno:** YouTube. La API de Google es gratis y
+no pide tarjeta; la de Spotify exige que la cuenta que registra la aplicación
+tenga Premium desde febrero de 2026. A cambio, los metadatos de Spotify vienen
+mucho más limpios — eso está [más abajo](#emparejar-sin-mentir).
 
 ### Lo que no hace, y por qué
 
-**Sounde no reproduce audio de Spotify.** No es que falte por hacer: es una
-decisión, y esta es la razón.
+**Sounde no reproduce audio de Spotify ni de YouTube.** No es que falte por
+hacer: es una decisión, y esta es la razón.
 
 Reproducir una pista de Spotify obliga a pasar por el Web Playback SDK, que
 va cifrado con DRM. Y **el audio bajo EME no se puede meter en
@@ -79,9 +89,29 @@ lista, pero bajar el audio va contra sus términos, así que ese descargador no
 está aquí.
 
 Lo que sí resuelve, que es el problema de verdad: **saber qué te falta.** Una
-lista de Spotify entra, se cruza con tu disco, y te dice qué tienes y qué no.
-Lo que falta lo consigues por donde tú decidas, y en cuanto el archivo cae en
-una carpeta vigilada la lista se completa sola.
+lista entra, se cruza con tu disco, y te dice qué tienes y qué no. Lo que falta
+lo consigues por donde tú decidas, y en cuanto el archivo cae en una carpeta
+vigilada la lista se completa sola.
+
+### YouTube
+
+La YouTube Data API v3 es gratis, sin tarjeta y sin facturación: 10 000
+unidades al día, y leer una lista cuesta 1 unidad por cada 50 canciones. Para
+uso personal no se agota. Se crea un proyecto en Google Cloud, se activa la
+API, y el OAuth se queda en modo *Testing* con tu propio correo como usuario
+de prueba — Google no tiene que verificar nada.
+
+Dos cosas que conviene saber antes de montarlo:
+
+- **Con el proyecto en modo de prueba, Google invalida la sesión cada siete
+  días.** Va a tocar reconectar una vez por semana. Sounde lo dice con esas
+  palabras cuando pasa, en vez de soltar un `invalid_grant` a secas.
+- **"Me gusta" de YouTube Music no es accesible.** La API llega a tus listas
+  creadas, pero esa lista automática Google no la expone.
+
+El puerto de retorno lo elige el sistema en cada intento: Google admite
+cualquier `127.0.0.1:puerto` sin registrarlo, así que aquí no hay URI que
+copiar ni puerto que pueda estar ocupado.
 
 ### Hace falta Premium, y no por lo que parece
 
@@ -140,6 +170,21 @@ minutos de diferencia no es una etiqueta mal puesta, es otra grabación.
 En la lista se distingue la coincidencia exacta de la hecha por parecido. Ese
 enlace lo hicimos nosotros comparando texto, así que si algún día suena algo
 que no toca, ahí es donde se mira para entender por qué.
+
+**Con YouTube hay un paso más, y es el punto débil.** Spotify da artista y
+título en campos separados; YouTube da una sola cadena escrita por quien subió
+el vídeo: `Bad Bunny - Tití Me Preguntó (Video Oficial)`. Hay que partirla.
+
+Lo que salva la situación es que las canciones de YouTube Music vienen de
+canales que Google genera solos, uno por artista, llamados `Bad Bunny - Topic`.
+Ahí el artista viene limpio. Para el resto se parte por el guion y se marca el
+artista como deducido, y cuando una de esas no aparece en tu biblioteca la
+propia fila lo explica al pasar el ratón: puede que la tengas con otro nombre.
+
+Los canales de VEVO se descartan a propósito como fuente del artista. El nombre
+va pegado (`BadBunnyVEVO`) y no casaría nunca con un archivo etiquetado
+`Bad Bunny`; como el emparejador exige que el artista coincida, uno equivocado
+no es un dato de menos, es lo que impide encontrar la canción.
 
 ### Lo que no sale de aquí
 
@@ -250,13 +295,17 @@ src/main/         proceso principal
   ipc.js          todos los handlers
   preload.js      el unico puente con la pagina
 
-src/main/spotify/ el catalogo remoto
+src/main/servicios/ lo comun a los catalogos remotos
   index.js        la unica cara hacia el resto de la app
-  auth.js         OAuth PKCE y el servidor de retorno
-  api.js          Web API: reintentos, 429 y paginacion
-  catalogo.js     traer listas, guardadas y caratulas
   emparejar.js    cruce con la biblioteca local
   credenciales.js el token cifrado
+
+src/main/spotify/ y src/main/youtube/   lo propio de cada uno
+  index.js        se declara y se da de alta
+  auth.js         OAuth PKCE y el servidor de retorno
+  api.js          peticiones, reintentos y paginacion
+  catalogo.js     traer listas, pistas y caratulas
+  titulos.js      (solo YouTube) partir "Artista - Tema"
 
 src/renderer/     la pagina
   js/player.js    motor de audio (Web Audio)
@@ -336,6 +385,13 @@ Algunos ejemplos de lo que hizo falta medir en vez de suponer:
   ventana y midiendo la geometría, no solo el DOM. Y la primera captura
   mentía: una ventana con `show: false` no compone, así que devolvía un
   fotograma viejo mientras el DOM ya tenía la vista nueva.
+- El parser de títulos de YouTube se verificó con las cadenas que hay de
+  verdad, y la mitad de las comprobaciones son de lo que NO debe partir:
+  `Jay-Z`, un guion sin espacios, o un título que ya venía limpio.
+- Que el emparejado no miente al añadir música se verificó dejando a
+  propósito el índice sin invalidar y comprobando que en ese caso da el
+  resultado viejo. Documentar el fallo es lo que justifica el gancho que lo
+  evita.
 
 ---
 

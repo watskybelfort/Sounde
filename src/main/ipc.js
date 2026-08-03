@@ -11,7 +11,12 @@ const taskbar = require('./taskbar');
 const notificaciones = require('./notificaciones');
 const bandeja = require('./bandeja');
 const letras = require('./letras');
-const spotify = require('./spotify');
+const servicios = require('./servicios');
+
+// Darse de alta es el efecto de requerirlos: a partir de aqui `servicios` los
+// conoce a los dos y el IPC no necesita nombrar a ninguno.
+require('./spotify');
+require('./youtube');
 
 /**
  * Registra los handlers del proceso principal.
@@ -42,7 +47,7 @@ function registerIpc(ctx) {
    * por ausente, y solo se arregla reiniciando.
    */
   const bibliotecaCambio = () => {
-    spotify.olvidarIndice();
+    servicios.olvidarIndice();
     emitir('library:changed', { total: library.size() });
   };
 
@@ -314,50 +319,58 @@ function registerIpc(ctx) {
     return creadas;
   }));
 
-  // --- Spotify --------------------------------------------------------------
-  spotify.init({ library });
+  // --- Servicios de catalogo (Spotify, YouTube) -----------------------------
+  servicios.init({ library });
 
-  ipcMain.handle('sp:state', () => spotify.estado());
+  /** Un id de servicio desconocido no debe reventar: se contesta vacio. */
+  const conServicio = (fn, siNoEsta = null) => (_e, id, ...args) => {
+    const servicio = servicios.de(id);
+    return servicio ? fn(servicio, ...args) : siNoEsta;
+  };
 
-  ipcMain.handle('sp:set-client-id', (_e, valor) => spotify.setClientId(valor));
+  ipcMain.handle('svc:all', () => servicios.estados());
 
-  ipcMain.handle('sp:connect', async () => {
+  ipcMain.handle('svc:state', conServicio((s) => s.estado()));
+
+  ipcMain.handle('svc:set-client-id', conServicio((s, valor) => s.setClientId(valor)));
+
+  ipcMain.handle('svc:set-client-secret', conServicio((s, valor) => s.setClientSecret(valor)));
+
+  ipcMain.handle('svc:connect', conServicio(async (s) => {
     try {
-      await spotify.conectar();
+      await s.conectar();
     } catch (err) {
-      return { ok: false, error: err.message, ...spotify.estado() };
+      return { ok: false, error: err.message, ...s.estado() };
     }
     // La primera sincronizacion sale sola: conectar la cuenta y encontrarse
     // la pantalla vacia con un boton de "sincronizar" al lado es pedirle al
     // usuario que haga a mano el segundo paso obvio del primero.
-    const res = await spotify.sincronizar({
-      onProgress: (p) => emitir('sp:progress', p),
+    const res = await s.sincronizar({
+      onProgress: (p) => emitir('svc:progress', { servicio: s.id, ...p }),
     });
-    emitir('sp:changed', spotify.estado());
-    return { ok: true, ...res, ...spotify.estado() };
-  });
+    emitir('svc:changed', s.estado());
+    return { ...res, ...s.estado() };
+  }, { ok: false, error: 'Ese servicio no existe.' }));
 
-  ipcMain.handle('sp:disconnect', () => {
-    const estado = spotify.desconectar();
-    emitir('sp:changed', estado);
+  ipcMain.handle('svc:disconnect', conServicio((s) => {
+    const estado = s.desconectar();
+    emitir('svc:changed', estado);
     return estado;
-  });
+  }));
 
-  ipcMain.handle('sp:sync', async () => {
-    const res = await spotify.sincronizar({
-      onProgress: (p) => emitir('sp:progress', p),
+  ipcMain.handle('svc:sync', conServicio(async (s) => {
+    const res = await s.sincronizar({
+      onProgress: (p) => emitir('svc:progress', { servicio: s.id, ...p }),
     });
-    emitir('sp:changed', spotify.estado());
+    emitir('svc:changed', s.estado());
     return res;
-  });
+  }, { ok: false, error: 'Ese servicio no existe.' }));
 
-  ipcMain.handle('sp:cancel-sync', () => spotify.cancelarSincronizacion());
+  ipcMain.handle('svc:cancel-sync', conServicio((s) => s.cancelar(), false));
 
-  ipcMain.handle('sp:playlists', () => spotify.listas());
+  ipcMain.handle('svc:playlists', conServicio((s) => s.listas(), []));
 
-  ipcMain.handle('sp:playlist', (_e, id) => (
-    id === spotify.GUARDADAS ? spotify.guardadas() : spotify.lista(id)
-  ));
+  ipcMain.handle('svc:playlist', conServicio((s, listaId) => s.lista(listaId)));
 
   // --- Letras ---------------------------------------------------------------
   ipcMain.handle('lyrics:for', async (_e, id) => {

@@ -215,7 +215,7 @@ async function escaneoInicial() {
     console.error('[main] el escaneo inicial fallo:', err.message);
   }
   for (const track of library.all()) protocols.allowFile(track.path);
-  require('./spotify').olvidarIndice();
+  require('./servicios').olvidarIndice();
   enviar('library:changed', { total: library.size() });
 }
 

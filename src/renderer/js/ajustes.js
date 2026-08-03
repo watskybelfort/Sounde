@@ -99,7 +99,7 @@ export function crearAjustes({ motor, ajustes, shell }) {
       seccionAspecto(),
       seccionSistema(),
       seccionBiblioteca(),
-      seccionSpotify(),
+      ...seccionesServicios(),
     ]);
 
     const hoja = el('div', {
@@ -330,78 +330,127 @@ export function crearAjustes({ motor, ajustes, shell }) {
   }
 
   /**
-   * Spotify.
+   * Una seccion por servicio de catalogo.
    *
-   * Hace falta un Client ID del usuario y no viene uno puesto. No es pereza:
-   * en PKCE el Client ID viaja en la URL a la vista de cualquiera, asi que
-   * repartir el mio en el instalador significaria que todas las instalaciones
-   * de Sounde comparten la misma cuota de la API — basta con que unos cuantos
-   * sincronicen a la vez para que a los demas les empiece a salir 429. Con el
-   * suyo, cada uno tiene la suya.
+   * Todos piden un Client ID del usuario y ninguno trae uno puesto. No es
+   * pereza: en PKCE el Client ID viaja en la URL a la vista de cualquiera,
+   * asi que repartir el mio en el instalador significaria que todas las
+   * instalaciones de Sounde comparten la misma cuota de la API — basta con
+   * que unos cuantos sincronicen a la vez para que a los demas les empiece a
+   * salir 429. Con el suyo, cada uno tiene la suya.
+   *
+   * Se construyen desde la lista que da el proceso principal, no escritas a
+   * mano una por una: lo que cambia entre servicios (donde esta su panel, si
+   * pide secreto, si hay URI que copiar) viaja en `ayuda`.
    */
-  function seccionSpotify() {
-    const estadoNodo = el('div', { class: 'spotify__estado' });
-    const acciones = el('div', { class: 'ajustes__botones' });
-    const avance = el('p', { class: 'ajustes__ayuda spotify__avance', hidden: true });
+  function seccionesServicios() {
+    const contenedor = el('div');
+    const secciones = new Map();
 
-    const campo = el('input', {
+    (async () => {
+      const estados = await window.sounde.servicios.todos();
+      contenedor.replaceChildren(...estados.map((e) => {
+        const s = seccionServicio(e);
+        secciones.set(e.id, s);
+        return s.nodo;
+      }));
+    })();
+
+    // El avance llega por un solo canal para todos: cada seccion se queda con
+    // lo suyo. Con una cuenta grande esto tarda, y un panel quieto es
+    // indistinguible de uno colgado.
+    window.sounde.servicios.onProgreso((p) => {
+      if (!capa) return;
+      secciones.get(p?.servicio)?.decir(textoDeFase(p));
+    });
+
+    return [contenedor];
+  }
+
+  function seccionServicio(inicial) {
+    let est = inicial;
+    const { id, nombre } = inicial;
+
+    const estadoNodo = el('div', { class: 'servicio__estado' });
+    const acciones = el('div', { class: 'ajustes__botones' });
+    const avance = el('p', { class: 'ajustes__ayuda servicio__avance', hidden: true });
+
+    const campoId = el('input', {
       class: 'dialogo__campo',
       type: 'text',
       spellcheck: 'false',
       autocomplete: 'off',
-      placeholder: '32 caracteres del panel de Spotify',
-      'aria-label': 'Client ID de tu aplicacion de Spotify',
+      value: est.clientId ?? '',
+      'aria-label': `Client ID de tu aplicacion de ${nombre}`,
     });
 
-    const uri = el('input', {
-      class: 'dialogo__campo spotify__uri',
+    const campoSecreto = est.ayuda?.pideSecreto ? el('input', {
+      class: 'dialogo__campo',
+      type: 'password',
+      spellcheck: 'false',
+      autocomplete: 'off',
+      value: est.clientSecret ?? '',
+      'aria-label': `Client secret de tu aplicacion de ${nombre}`,
+    }) : null;
+
+    const uri = est.ayuda?.redirectUri ? el('input', {
+      class: 'dialogo__campo servicio__uri',
       type: 'text',
       readonly: true,
-      'aria-label': 'URI de retorno que hay que registrar en Spotify',
-    });
+      value: est.ayuda.redirectUri,
+      'aria-label': `URI de retorno que hay que registrar en ${nombre}`,
+    }) : null;
 
-    let sp = null;
+    function decir(texto, esFallo = false) {
+      avance.hidden = !texto;
+      avance.textContent = texto ?? '';
+      avance.dataset.fallo = String(!!esFallo);
+    }
 
     async function refrescarEstado() {
-      sp = await window.sounde.spotify.estado();
-      campo.value = sp.clientId ?? '';
-      uri.value = sp.redirectUri ?? '';
+      est = await window.sounde.servicios.estado(id);
+      campoId.value = est.clientId ?? '';
+      if (campoSecreto) campoSecreto.value = est.clientSecret ?? '';
       pintarEstado();
       pintarAcciones();
     }
 
     function pintarEstado() {
-      if (!sp?.conectado) {
+      if (!est?.conectado) {
         estadoNodo.replaceChildren(
-          el('span', { class: 'spotify__punto' }),
+          el('span', { class: 'servicio__punto' }),
           el('span', { texto: 'Sin conectar' }),
         );
         return;
       }
-      const nombre = sp.perfil?.nombre ?? 'tu cuenta';
-      const cuando = sp.sincronizado
-        ? `Ultima sincronizacion: ${new Date(sp.sincronizado).toLocaleString()}`
+      const quien = est.perfil?.nombre ?? 'tu cuenta';
+      const cuando = est.sincronizado
+        ? `Ultima sincronizacion: ${new Date(est.sincronizado).toLocaleString()}`
         : 'Todavia sin sincronizar';
+      // Las guardadas solo se nombran si el servicio las tiene: en YouTube la
+      // API no llega a los me gusta de YouTube Music, y decir "0 guardadas"
+      // parece que algo ha fallado.
+      const trozos = [plural(est.listas ?? 0, 'lista', 'listas')];
+      if (est.guardadas) trozos.push(plural(est.guardadas, 'guardada', 'guardadas'));
+      trozos.push(cuando);
+
       estadoNodo.replaceChildren(
-        el('span', { class: 'spotify__punto spotify__punto--vivo' }),
-        el('div', { class: 'spotify__quien' }, [
-          el('span', { texto: `Conectado como ${nombre}` }),
-          el('span', {
-            class: 'ajustes__ayuda',
-            texto: `${plural(sp.listas ?? 0, 'lista', 'listas')} · ${plural(sp.guardadas ?? 0, 'guardada', 'guardadas')} · ${cuando}`,
-          }),
+        el('span', { class: 'servicio__punto servicio__punto--vivo' }),
+        el('div', { class: 'servicio__quien' }, [
+          el('span', { texto: `Conectado como ${quien}` }),
+          el('span', { class: 'ajustes__ayuda', texto: trozos.join(' · ') }),
         ]),
       );
     }
 
     function pintarAcciones() {
-      if (!sp?.conectado) {
+      if (!est?.conectado) {
         acciones.replaceChildren(el('button', {
           class: 'boton boton--acento',
-          texto: 'Conectar con Spotify',
+          texto: `Conectar con ${nombre}`,
           // Sin Client ID no hay nada que intentar: el boton apagado con la
           // ayuda debajo explica mejor que un error despues de pulsarlo.
-          ...(sp?.hayClientId ? {} : { disabled: true }),
+          ...(est?.hayClientId ? {} : { disabled: true }),
           onclick: conectar,
         }));
         return;
@@ -412,75 +461,69 @@ export function crearAjustes({ motor, ajustes, shell }) {
       );
     }
 
-    function decir(texto, esFallo = false) {
-      avance.hidden = !texto;
-      avance.textContent = texto ?? '';
-      avance.dataset.fallo = String(!!esFallo);
-    }
-
     async function conectar() {
-      decir('Abriendo el navegador… acepta en Spotify y vuelve aqui.');
-      const res = await window.sounde.spotify.conectar();
-      if (!res?.ok) {
-        decir(res?.error ?? 'No se pudo conectar.', true);
-      } else {
-        decir(`Listo: ${plural(res.listas ?? 0, 'lista traida', 'listas traidas')}.`);
-      }
+      decir(`Abriendo el navegador… acepta en ${nombre} y vuelve aqui.`);
+      const res = await window.sounde.servicios.conectar(id);
+      decir(res?.ok
+        ? `Listo: ${plural(res.listas ?? 0, 'lista traida', 'listas traidas')}.`
+        : (res?.error ?? 'No se pudo conectar.'), !res?.ok);
       await refrescarEstado();
-      shell?.refrescarSpotify?.();
+      shell?.refrescarServicios?.();
     }
 
     async function sincronizar() {
       decir('Sincronizando…');
-      const res = await window.sounde.spotify.sincronizar();
+      const res = await window.sounde.servicios.sincronizar(id);
       decir(res?.ok
-        ? `Listo: ${plural(res.listas ?? 0, 'lista', 'listas')} y ${plural(res.guardadas ?? 0, 'guardada', 'guardadas')}.`
+        ? `Listo: ${plural(res.listas ?? 0, 'lista', 'listas')}.`
         : (res?.error ?? 'No se pudo sincronizar.'), !res?.ok);
       await refrescarEstado();
-      shell?.refrescarSpotify?.();
+      shell?.refrescarServicios?.();
     }
 
     async function desconectar() {
       const seguro = await confirmar({
-        titulo: 'Desconectar Spotify',
+        titulo: `Desconectar ${nombre}`,
         texto: 'Se borran la sesion y el catalogo descargado. Tu musica local no se toca.',
         aceptar: 'Desconectar',
         peligro: true,
       });
       if (!seguro) return;
-      await window.sounde.spotify.desconectar();
+      await window.sounde.servicios.desconectar(id);
       decir('');
       await refrescarEstado();
-      shell?.refrescarSpotify?.();
+      shell?.refrescarServicios?.();
     }
 
-    // El avance de la sincronizacion llega por su canal: con una cuenta grande
-    // esto tarda, y una interfaz quieta es indistinguible de una colgada.
-    window.sounde.spotify.onProgreso((p) => {
-      if (!capa) return;
-      decir(textoDeFase(p));
-    });
-
-    campo.addEventListener('change', async () => {
-      sp = await window.sounde.spotify.setClientId(campo.value);
+    campoId.addEventListener('change', async () => {
+      est = await window.sounde.servicios.setClientId(id, campoId.value);
       pintarEstado();
       pintarAcciones();
     });
 
-    refrescarEstado();
+    campoSecreto?.addEventListener('change', async () => {
+      est = await window.sounde.servicios.setClientSecret(id, campoSecreto.value);
+    });
 
-    return seccion('Spotify', [
-      fila('Cuenta', 'Trae tus listas y tus me gusta, y te dice cuales de esas canciones ya tienes en el disco.', estadoNodo),
+    pintarEstado();
+    pintarAcciones();
+
+    const nodo = seccion(nombre, [
+      fila('Cuenta',
+        'Trae tus listas y te dice cuales de esas canciones ya tienes en el disco.',
+        estadoNodo),
       el('div', { class: 'ajustes__bloque' }, [acciones, avance]),
 
       el('div', { class: 'ajustes__bloque' }, [
         el('p', { class: 'ajustes__ayuda' }, [
-          el('span', { texto: 'Hace falta una aplicacion tuya en el panel de Spotify. Crea una en ' }),
-          enlace('developer.spotify.com/dashboard', 'https://developer.spotify.com/dashboard'),
-          el('span', { texto: ', pega abajo esta URI de retorno tal cual, y copia aqui el Client ID.' }),
+          el('span', { texto: `Hace falta una aplicacion tuya en el panel de ${nombre}. Creala en ` }),
+          enlace(est.ayuda?.panelTexto ?? 'el panel', est.ayuda?.panel ?? '#'),
+          el('span', { texto: uri ? ', pega abajo esta URI de retorno tal cual, y copia aqui el Client ID.' : ' y copia aqui el Client ID.' }),
         ]),
-        el('label', { class: 'dialogo__etiqueta', texto: 'URI de retorno (pegala en Spotify)' }),
-        el('div', { class: 'spotify__uri-fila' }, [
+        est.ayuda?.aviso ? el('p', { class: 'ajustes__ayuda servicio__aviso', texto: est.ayuda.aviso }) : null,
+
+        uri ? el('label', { class: 'dialogo__etiqueta', texto: `URI de retorno (pegala en ${nombre})` }) : null,
+        uri ? el('div', { class: 'servicio__uri-fila' }, [
           uri,
           el('button', {
             class: 'boton',
@@ -490,15 +533,22 @@ export function crearAjustes({ motor, ajustes, shell }) {
               decir('URI copiada.');
             },
           }),
-        ]),
+        ]) : null,
+
         el('label', { class: 'dialogo__etiqueta', texto: 'Client ID' }),
-        campo,
+        campoId,
+
+        campoSecreto ? el('label', { class: 'dialogo__etiqueta', texto: 'Client secret (opcional)' }) : null,
+        campoSecreto,
+
         el('p', {
           class: 'ajustes__ayuda',
-          texto: 'No es un secreto: en este flujo viaja en la URL y se ve en el navegador. Lo que protege la conexion es un verificador que se genera en cada intento.',
+          texto: 'El Client ID no es un secreto: en este flujo viaja en la URL y se ve en el navegador. Lo que protege la conexion es un verificador que se genera en cada intento.',
         }),
       ]),
     ]);
+
+    return { nodo, decir, refrescarEstado };
   }
 
   return {

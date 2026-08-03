@@ -18,7 +18,7 @@ import { pistasDe } from './listas.js';
 import { abrirMenu } from './menu.js';
 import { pedirTexto, confirmar } from './dialogo.js';
 import { crearLetra } from './letra.js';
-import { crearVistaSpotify } from './spotify.js';
+import { crearVistaCatalogo } from './catalogo.js';
 
 const raiz = document.documentElement;
 
@@ -341,7 +341,7 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
     if (v.tipo === 'artista') return v.clave.nombre;
     if (v.tipo === 'lista') return v.clave.name;
     if (v.tipo === 'letra') return 'Letra';
-    if (v.tipo === 'spotify') return vistaSpotify.datos?.name ?? 'Spotify';
+    if (v.tipo === 'catalogo') return vistaCatalogo.datos?.name ?? 'Catalogo';
     return TITULOS[v.tipo] ?? 'Canciones';
   }
 
@@ -355,87 +355,122 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
    */
   const letra = crearLetra({ player });
 
-  // --- Spotify --------------------------------------------------------------
+  // --- Servicios de catalogo (Spotify, YouTube) -----------------------------
 
   /**
-   * El catalogo de Spotify, si hay cuenta conectada.
+   * Las listas de los servicios conectados.
    *
-   * Como la letra, no esta en TITULOS: no es una seccion de la biblioteca
-   * local, y guardarla como vista de arranque haria que Sounde abriera en una
-   * lista remota vacia mientras se sincroniza.
+   * Como la letra, no estan en TITULOS: no son secciones de la biblioteca
+   * local, y guardar una como vista de arranque haria que Sounde abriera en
+   * una lista remota vacia mientras se sincroniza.
+   *
+   * La vista es UNA sola para todos los servicios. Lo que llega del proceso
+   * principal ya viene normalizado, asi que a partir de aqui una lista de
+   * YouTube y una de Spotify son la misma cosa.
    */
-  const vistaSpotify = crearVistaSpotify({
+  const vistaCatalogo = crearVistaCatalogo({
     queue,
     listas,
     // La vista solo guarda el id local; la pista de verdad la tiene el shell.
     resolver: (id) => pistas.find((t) => t.id === id) ?? null,
   });
 
-  let listasSpotify = [];
-  const grupoSpotify = $('#grupo-spotify');
-  const contenedorSpotify = $('#lista-spotify');
-  const btnSincronizar = $('#btn-sincronizar-spotify');
+  /** { id, nombre, conectado, listas: [...] } por servicio. */
+  let servicios = [];
+  const contenedorServicios = $('#grupos-servicios');
 
-  pintarGlifo(btnSincronizar, 'refrescar');
+  async function refrescarServicios() {
+    const estados = await window.sounde.servicios.todos();
+    servicios = await Promise.all(estados.map(async (e) => ({
+      ...e,
+      listas: e.conectado ? await window.sounde.servicios.listas(e.id) : [],
+    })));
 
-  btnSincronizar?.addEventListener('click', async () => {
-    grupoSpotify.dataset.sincronizando = 'true';
-    await window.sounde.spotify.sincronizar();
-    delete grupoSpotify.dataset.sincronizando;
-    await refrescarSpotify();
-  });
-
-  async function refrescarSpotify() {
-    const estado = await window.sounde.spotify.estado();
-    grupoSpotify.hidden = !estado.conectado;
-    if (!estado.conectado) {
-      listasSpotify = [];
-      // Si estabas mirando una lista de Spotify y desconectas la cuenta, esa
-      // vista ya no existe: quedarse ahi deja una pantalla muerta.
-      if (vista.tipo === 'spotify') ir({ tipo: 'canciones' });
-      pintarListasSpotify();
-      return;
+    // Si estabas mirando una lista de un servicio que acaba de desconectarse,
+    // esa vista ya no existe: quedarse ahi deja una pantalla muerta.
+    if (vista.tipo === 'catalogo') {
+      const suyo = servicios.find((s) => s.id === vista.clave?.servicio);
+      if (!suyo?.conectado) ir({ tipo: 'canciones' });
+      else await abrirListaRemota(vista.clave.servicio, vista.clave.lista, true);
     }
-    listasSpotify = await window.sounde.spotify.listas();
-    pintarListasSpotify();
-    if (vista.tipo === 'spotify') await abrirListaSpotify(vista.clave, true);
+    pintarServicios();
   }
 
-  function pintarListasSpotify() {
-    if (!contenedorSpotify) return;
-    const items = [
-      { id: '__guardadas__', name: 'Tus me gusta', total: null },
-      ...listasSpotify,
-    ];
-    contenedorSpotify.replaceChildren(...(grupoSpotify.hidden ? [] : items.map((p) => el('button', {
-      class: 'lateral__item',
-      title: p.total === null ? p.name : `${p.name} — ${p.encontradas} de ${p.total} las tienes`,
-      'aria-current': String(vista.tipo === 'spotify' && vista.clave === p.id),
-      onClick: () => abrirListaSpotify(p.id),
-    }, [
-      el('span', { class: 'lateral__icono', texto: glifo(p.id === '__guardadas__' ? 'corazonLleno' : 'lista') }),
-      el('span', { class: 'lateral__texto', texto: p.name }),
-      el('span', {
-        class: 'lateral__cuenta tabular',
-        texto: p.total ? `${p.encontradas}/${p.total}` : '',
-      }),
-    ]))));
+  function pintarServicios() {
+    if (!contenedorServicios) return;
+
+    contenedorServicios.replaceChildren(...servicios
+      .filter((s) => s.conectado)
+      .map((s) => {
+        const sincronizar = el('button', {
+          class: 'lateral__accion',
+          title: `Sincronizar con ${s.nombre}`,
+          'aria-label': `Sincronizar con ${s.nombre}`,
+          texto: glifo('refrescar'),
+          onClick: async (e) => {
+            const grupo = e.target.closest('.lateral__grupo');
+            grupo.dataset.sincronizando = 'true';
+            await window.sounde.servicios.sincronizar(s.id);
+            delete grupo.dataset.sincronizando;
+            await refrescarServicios();
+          },
+        });
+
+        return el('div', { class: 'lateral__grupo lateral__grupo--servicio' }, [
+          el('span', { class: 'lateral__titulo' }, [
+            document.createTextNode(s.nombre),
+            sincronizar,
+          ]),
+          el('div', { class: 'lateral__listas' }, s.listas.map((p) => el('button', {
+            class: 'lateral__item',
+            title: `${p.name} — tienes ${p.encontradas} de ${p.total}`,
+            'aria-current': String(
+              vista.tipo === 'catalogo'
+              && vista.clave?.servicio === s.id
+              && vista.clave?.lista === p.id,
+            ),
+            onClick: () => abrirListaRemota(s.id, p.id),
+          }, [
+            el('span', {
+              class: 'lateral__icono',
+              texto: glifo(p.id === '__guardadas__' ? 'corazonLleno' : 'lista'),
+            }),
+            el('span', { class: 'lateral__texto', texto: p.name }),
+            el('span', {
+              class: 'lateral__cuenta tabular',
+              texto: p.total ? `${p.encontradas}/${p.total}` : '',
+            }),
+          ]))),
+        ]);
+      }));
+  }
+
+  /**
+   * El nombre del servicio de la lista abierta, para la cabecera.
+   *
+   * Es lo que ocupa el sitio de "Canciones" o "Listas": con dos servicios
+   * conectados hay que poder saber de cual es lo que estas mirando sin bajar
+   * la vista al lateral.
+   */
+  function nombreDelServicio() {
+    const suyo = servicios.find((s) => s.id === vista.clave?.servicio);
+    return suyo?.nombre ?? 'Catalogo';
   }
 
   /** `silencioso` repinta sin mover la navegacion, tras una sincronizacion. */
-  async function abrirListaSpotify(id, silencioso = false) {
-    const lista = await window.sounde.spotify.lista(id);
+  async function abrirListaRemota(servicio, listaId, silencioso = false) {
+    const lista = await window.sounde.servicios.lista(servicio, listaId);
     if (!lista) {
       if (!silencioso) ir({ tipo: 'canciones' });
       return;
     }
-    vistaSpotify.mostrar(lista);
-    if (!silencioso) ir({ tipo: 'spotify', clave: id });
-    else pintarListasSpotify();
+    vistaCatalogo.mostrar(lista);
+    if (!silencioso) ir({ tipo: 'catalogo', clave: { servicio, lista: listaId } });
+    else pintarServicios();
   }
 
-  window.sounde.spotify.onCambio(() => refrescarSpotify());
-  refrescarSpotify();
+  window.sounde.servicios.onCambio(() => refrescarServicios());
+  refrescarServicios();
 
   function alternarLetra() {
     if (vista.tipo === 'letra') volver();
@@ -620,7 +655,7 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
     // biblioteca, asi que un archivo nuevo lo cambia. Sin esto, añades la
     // cancion que faltaba y la lista de Spotify la sigue dando por ausente
     // hasta reiniciar.
-    refrescarSpotify();
+    refrescarServicios();
     return pistas;
   }
 
@@ -730,8 +765,8 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
       return;
     }
 
-    if (vista.tipo === 'spotify') {
-      const d = vistaSpotify.datos;
+    if (vista.tipo === 'catalogo') {
+      const d = vistaCatalogo.datos;
       resumen.textContent = d ? `${d.encontradas} de ${d.items.length} en tu biblioteca` : '';
       return;
     }
@@ -775,12 +810,12 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
       boton.setAttribute('aria-current', String(tipo === base() && vista.tipo !== 'lista'));
     }
     pintarListas();
-    pintarListasSpotify();
+    pintarServicios();
     tituloVista.textContent = vista.tipo === 'lista' ? 'Listas'
       : vista.tipo === 'letra' ? 'Letra'
-        : vista.tipo === 'spotify' ? 'Spotify' : TITULOS[base()];
+        : vista.tipo === 'catalogo' ? nombreDelServicio() : TITULOS[base()];
     acciones.dataset.ficha = String(
-      enFicha || vista.tipo === 'lista' || vista.tipo === 'letra' || vista.tipo === 'spotify',
+      enFicha || vista.tipo === 'lista' || vista.tipo === 'letra' || vista.tipo === 'catalogo',
     );
 
     letra.setVisible(vista.tipo === 'letra');
@@ -790,9 +825,9 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
      * Spotify se puede mirar sin tener una sola cancion en el disco. De hecho
      * es cuando mas sirve — es la lista de lo que te falta entero.
      */
-    if (vista.tipo === 'spotify') {
-      cuerpo.dataset.modo = 'spotify';
-      cuerpo.replaceChildren(vistaSpotify.nodo);
+    if (vista.tipo === 'catalogo') {
+      cuerpo.dataset.modo = 'catalogo';
+      cuerpo.replaceChildren(vistaCatalogo.nodo);
       pintarResumen();
       return;
     }
@@ -972,7 +1007,7 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
   }
 
   return {
-    refrescar, ir, alternarLetra, onVista, lista, refrescarSpotify,
+    refrescar, ir, alternarLetra, onVista, lista, refrescarServicios,
     get pistas() { return pistas; },
     get vista() { return vista; },
   };

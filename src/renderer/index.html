@@ -25,7 +25,7 @@
   <link rel="stylesheet" href="styles/comandos.css">
   <link rel="stylesheet" href="styles/dialogo.css">
   <link rel="stylesheet" href="styles/ajustes.css">
-  <link rel="stylesheet" href="styles/spotify.css">
+  <link rel="stylesheet" href="styles/catalogo.css">
   <link rel="stylesheet" href="styles/titlebar.css">
   <link rel="stylesheet" href="styles/transport.css">
 </head>
@@ -96,14 +96,8 @@
       <div class="lateral__listas" id="lista-listas"></div>
     </div>
 
-    <div class="lateral__grupo lateral__grupo--spotify" id="grupo-spotify" hidden>
-      <span class="lateral__titulo">
-        Spotify
-        <button class="lateral__accion" id="btn-sincronizar-spotify"
-                title="Sincronizar con Spotify" aria-label="Sincronizar con Spotify"></button>
-      </span>
-      <div class="lateral__listas" id="lista-spotify"></div>
-    </div>
+    <!-- Un grupo por servicio conectado, montado desde shell.js. -->
+    <div id="grupos-servicios"></div>
 
     <div class="lateral__grupo">
       <span class="lateral__titulo">

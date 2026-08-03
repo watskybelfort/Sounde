@@ -361,14 +361,14 @@ input[type='range']:focus-visible::-webkit-slider-thumb {
 
 /* --- Spotify -------------------------------------------------------------- */
 
-.spotify__estado {
+.servicio__estado {
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 13px;
 }
 
-.spotify__quien {
+.servicio__quien {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -381,7 +381,7 @@ input[type='range']:focus-visible::-webkit-slider-thumb {
  * repinta en cada fotograma del bucle, y una transicion encima se reinicia
  * sesenta veces por segundo sin llegar nunca al color nuevo.
  */
-.spotify__punto {
+.servicio__punto {
   flex: 0 0 auto;
   width: 8px;
   height: 8px;
@@ -389,31 +389,31 @@ input[type='range']:focus-visible::-webkit-slider-thumb {
   background: var(--texto-3);
 }
 
-.spotify__punto--vivo {
+.servicio__punto--vivo {
   background: rgb(var(--acento));
   box-shadow: 0 0 0 3px rgb(var(--acento) / 0.18);
 }
 
-.spotify__uri-fila {
+.servicio__uri-fila {
   display: flex;
   gap: 8px;
   align-items: center;
 }
 
 /* La URI hay que poder seleccionarla entera para pegarla en el panel. */
-.spotify__uri {
+.servicio__uri {
   flex: 1;
   min-width: 0;
   color: var(--texto-2);
   user-select: all;
 }
 
-.spotify__avance {
+.servicio__avance {
   margin-top: 8px;
   min-height: 16px;
 }
 
-.spotify__avance[data-fallo='true'] {
+.servicio__avance[data-fallo='true'] {
   color: rgb(255 138 128);
 }
 
@@ -436,4 +436,11 @@ input[type='range']:focus-visible::-webkit-slider-thumb {
 
 .enlace:hover {
   opacity: 0.8;
+}
+
+/* Lo que cada servicio advierte antes de que el usuario monte nada. */
+.servicio__aviso {
+  padding: 8px 10px;
+  border-radius: var(--radio-1);
+  background: var(--vidrio-2);
 }

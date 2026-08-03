@@ -1,5 +1,5 @@
 /**
- * La vista de una lista de Spotify cruzada con tu biblioteca.
+ * La vista de una lista de un servicio remoto, cruzada con tu biblioteca.
  *
  * No reutiliza `lista.js` a proposito: aquella pinta pistas locales, y aqui
  * la mitad de las filas no tienen archivo detras. Meterlo alli habria llenado
@@ -20,8 +20,8 @@ const FILTROS = [
   { valor: 'faltan', texto: 'Las que faltan' },
 ];
 
-export function crearVistaSpotify({ queue, resolver, listas }) {
-  const nodo = el('div', { class: 'sp' });
+export function crearVistaCatalogo({ queue, resolver, listas }) {
+  const nodo = el('div', { class: 'cat' });
   let datos = null;
   let filtro = 'todo';
 
@@ -59,22 +59,22 @@ export function crearVistaSpotify({ queue, resolver, listas }) {
     const total = datos.items.length;
     const tengo = datos.encontradas ?? 0;
 
-    return el('header', { class: 'sp__cabecera' }, [
+    return el('header', { class: 'cat__cabecera' }, [
       datos.artUrl
-        ? el('img', { class: 'sp__arte', src: datos.artUrl, alt: '', loading: 'lazy' })
-        : el('div', { class: 'sp__arte sp__arte--vacio', texto: glifo('lista') }),
+        ? el('img', { class: 'cat__arte', src: datos.artUrl, alt: '', loading: 'lazy' })
+        : el('div', { class: 'cat__arte cat__arte--vacio', texto: glifo('lista') }),
 
-      el('div', { class: 'sp__info' }, [
-        el('span', { class: 'sp__tipo', texto: datos.owner ? `Lista de ${datos.owner}` : 'Spotify' }),
-        el('h2', { class: 'sp__titulo', texto: datos.name }),
-        datos.description ? el('p', { class: 'sp__desc', texto: datos.description }) : null,
+      el('div', { class: 'cat__info' }, [
+        el('span', { class: 'cat__tipo', texto: datos.owner ? `Lista de ${datos.owner}` : 'Spotify' }),
+        el('h2', { class: 'cat__titulo', texto: datos.name }),
+        datos.description ? el('p', { class: 'cat__desc', texto: datos.description }) : null,
 
-        el('p', { class: 'sp__cuenta' }, [
+        el('p', { class: 'cat__cuenta' }, [
           el('strong', { texto: `${tengo} de ${total}` }),
           el('span', { texto: ` ya en tu biblioteca` }),
           datos.descartadas
             ? el('span', {
-              class: 'sp__nota',
+              class: 'cat__nota',
               // Sin decirlo, una lista de 50 que aparece con 47 parece un
               // fallo de Sounde y no lo que es: episodios o pistas retiradas.
               texto: ` · ${plural(datos.descartadas, 'entrada omitida', 'entradas omitidas')} (podcasts o retiradas de Spotify)`,
@@ -82,7 +82,7 @@ export function crearVistaSpotify({ queue, resolver, listas }) {
             : null,
         ]),
 
-        el('div', { class: 'sp__acciones' }, [
+        el('div', { class: 'cat__acciones' }, [
           el('button', {
             class: 'boton boton--acento',
             ...(tengo ? {} : { disabled: true }),
@@ -111,7 +111,7 @@ export function crearVistaSpotify({ queue, resolver, listas }) {
           ]),
         ]),
 
-        el('div', { class: 'segmentado sp__filtros' }, FILTROS.map((f) => el('button', {
+        el('div', { class: 'segmentado cat__filtros' }, FILTROS.map((f) => el('button', {
           class: 'segmentado__opcion',
           dataset: { valor: f.valor },
           'aria-pressed': String(filtro === f.valor),
@@ -143,10 +143,9 @@ export function crearVistaSpotify({ queue, resolver, listas }) {
     ));
 
     /*
-     * Desde febrero de 2026 Spotify solo deja leer las canciones de tus
-     * listas y de aquellas en las que colaboras. Las que solo sigues llegan
-     * vacias, y una lista vacia sin explicacion parece que Sounde ha perdido
-     * su contenido.
+     * Hay listas cuyo contenido el servicio no entrega — en Spotify, desde
+     * febrero de 2026, todas las que solo sigues. Llegan vacias, y una lista
+     * vacia sin explicacion parece que Sounde ha perdido lo que tenia dentro.
      */
     if (datos.sinAcceso) {
       return el('div', { class: 'vacio vacio--vista' }, [
@@ -154,7 +153,7 @@ export function crearVistaSpotify({ queue, resolver, listas }) {
         el('h2', { class: 'vacio__titulo', texto: 'Esta lista no es tuya' }),
         el('p', {
           class: 'vacio__texto',
-          texto: 'Spotify solo deja leer las canciones de tus propias listas y de aquellas en las que colaboras. De las que solo sigues no da el contenido, asi que no hay nada que cruzar con tu biblioteca.',
+          texto: 'El servicio solo entrega las canciones de tus propias listas y de aquellas en las que colaboras. De las que solo sigues no da el contenido, asi que no hay nada que cruzar con tu biblioteca.',
         }),
       ]);
     }
@@ -175,7 +174,7 @@ export function crearVistaSpotify({ queue, resolver, listas }) {
       ]);
     }
 
-    return el('div', { class: 'sp__filas', role: 'list' }, visibles.map(fila));
+    return el('div', { class: 'cat__filas', role: 'list' }, visibles.map(fila));
   }
 
   function fila(item) {
@@ -183,7 +182,7 @@ export function crearVistaSpotify({ queue, resolver, listas }) {
     const artistas = (item.artists ?? []).join(', ');
 
     return el('div', {
-      class: 'sp__fila',
+      class: 'cat__fila',
       role: 'listitem',
       dataset: { tengo: String(!!local) },
       // Solo lo que tiene archivo detras es pulsable. Una fila que se ilumina
@@ -200,18 +199,18 @@ export function crearVistaSpotify({ queue, resolver, listas }) {
       } : {}),
     }, [
       item.artUrl
-        ? el('img', { class: 'sp__fila-arte', src: item.artUrl, alt: '', loading: 'lazy' })
-        : el('div', { class: 'sp__fila-arte sp__fila-arte--vacio', texto: glifo('musica') }),
+        ? el('img', { class: 'cat__fila-arte', src: item.artUrl, alt: '', loading: 'lazy' })
+        : el('div', { class: 'cat__fila-arte cat__fila-arte--vacio', texto: glifo('musica') }),
 
-      el('div', { class: 'sp__fila-texto' }, [
-        el('span', { class: 'sp__fila-titulo truncar', texto: item.title, title: item.title }),
-        el('span', { class: 'sp__fila-artista truncar', texto: artistas, title: artistas }),
+      el('div', { class: 'cat__fila-texto' }, [
+        el('span', { class: 'cat__fila-titulo truncar', texto: item.title, title: item.title }),
+        el('span', { class: 'cat__fila-artista truncar', texto: artistas, title: artistas }),
       ]),
 
-      el('span', { class: 'sp__fila-album truncar', texto: item.album ?? '', title: item.album ?? '' }),
+      el('span', { class: 'cat__fila-album truncar', texto: item.album ?? '', title: item.album ?? '' }),
 
       el('span', {
-        class: 'sp__fila-marca',
+        class: 'cat__fila-marca',
         // 'probable' se distingue de 'exacta' porque el enlace lo hicimos
         // nosotros por parecido, no por identidad: si suena otra cosa, aqui
         // es donde el usuario mira para entender por que.
@@ -219,12 +218,17 @@ export function crearVistaSpotify({ queue, resolver, listas }) {
           ? (item.confianza === 'exacta'
             ? `En tu biblioteca: ${local.title}`
             : `Emparejada por parecido con: ${local.title} — ${local.album}`)
-          : 'No esta en tu biblioteca',
+          // En YouTube el artista puede venir adivinado partiendo el titulo
+          // del video. Cuando no se encuentra la cancion y ademas el artista
+          // era una suposicion, decirlo ahorra buscar un fallo que no existe.
+          : (item.fiabilidad === 'guion' || item.fiabilidad === 'ninguna'
+            ? 'No esta en tu biblioteca. El artista se dedujo del titulo del video, asi que puede que la tengas con otro nombre.'
+            : 'No esta en tu biblioteca'),
         texto: local ? glifo(item.confianza === 'exacta' ? 'corazonLleno' : 'corazon') : glifo('descargar'),
         dataset: { confianza: item.confianza ?? 'no' },
       }),
 
-      el('span', { class: 'sp__fila-tiempo tabular', texto: formatoTiempo(item.duration) }),
+      el('span', { class: 'cat__fila-tiempo tabular', texto: formatoTiempo(item.duration) }),
     ]);
   }
 
