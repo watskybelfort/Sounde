@@ -12,6 +12,7 @@ const { registerSchemes, registerHandlers } = require('./protocols');
 const protocols = require('./protocols');
 const { Library } = require('./library');
 const { Collections } = require('./collections');
+const taskbar = require('./taskbar');
 
 const APP_URL = 'sounde://app/index.html';
 
@@ -110,6 +111,9 @@ function cerrar() {
   if (settings) settings.save();
   if (library) library.persist();
   if (collections) collections.store.save();
+  // Sin esto Windows deja la barra verde pegada al icono hasta que el hueco de
+  // la barra de tareas se recicla, que puede tardar.
+  taskbar.limpiar(mainWindow);
 }
 
 /**

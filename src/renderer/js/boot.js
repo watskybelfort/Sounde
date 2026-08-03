@@ -15,6 +15,7 @@ import { crearAcciones } from './acciones.js';
 import { initAtajos } from './atajos.js';
 import { crearComandos } from './comandos.js';
 import { initSesionMedios } from './mediasession.js';
+import { initBarraTareas } from './barratareas.js';
 import { $, pintarGlifo } from './dom.js';
 
 const raiz = document.documentElement;
@@ -44,6 +45,7 @@ async function boot() {
   const cola = engancharCola(motor, ajustes);
   engancharPaleta(motor, ajustes);
   engancharVisualizador(motor, ajustes);
+  initBarraTareas(motor);
   const sesion = initSesionMedios(motor, { activo: ajustes.mediaKeys !== false });
   window.sounde.settings.onChange((patch) => {
     if (patch.mediaKeys !== undefined) sesion.setActivo(patch.mediaKeys !== false);

@@ -29,6 +29,13 @@ contextBridge.exposeInMainWorld('sounde', {
     onMini: (h) => on('window:mini', h),
   },
 
+  // --- Reproduccion en el sistema -----------------------------------------
+  player: {
+    /** Avisa de como va la reproduccion: barra de tareas, botones, distintivo. */
+    report: (estado) => ipcRenderer.send('player:state', estado),
+    onCommand: (h) => on('player:command', h),
+  },
+
   // --- Ajustes ------------------------------------------------------------
   settings: {
     all: () => ipcRenderer.invoke('settings:all'),

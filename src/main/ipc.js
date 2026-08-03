@@ -7,6 +7,7 @@ const { applyBackdrop, setMiniPlayer } = require('./window');
 const protocols = require('./protocols');
 const { AUDIO_EXTENSIONS, EQ_BANDS, EQ_PRESETS } = require('./defaults');
 const m3u = require('./m3u');
+const taskbar = require('./taskbar');
 
 /**
  * Registra los handlers del proceso principal.
@@ -54,6 +55,26 @@ function registerIpc(ctx) {
     focused: win.isFocused(),
     mini: settings.get('miniPlayer', false),
   })));
+
+  // --- Barra de tareas -----------------------------------------------------
+  /*
+   * Por `on` y no por `handle`: el renderer avisa de como va la reproduccion
+   * varias veces por minuto y no espera respuesta. Un invoke por cada aviso
+   * seria una promesa ida y vuelta para nada.
+   */
+  let ultimaVentana = null;
+  ipcMain.on('player:state', (_e, estado) => {
+    const win = getWindow();
+    if (!win || win.isDestroyed()) return;
+    // Una ventana nueva nace sin botones ni distintivo. El cache de "lo ultimo
+    // aplicado" es del modulo, no de la ventana: sin este reinicio la firma
+    // seguiria coincidiendo y la barra se quedaria vacia para siempre.
+    if (win !== ultimaVentana) {
+      ultimaVentana = win;
+      taskbar.reiniciar();
+    }
+    taskbar.aplicarEstado(win, estado, (orden) => emitir('player:command', { orden }));
+  });
 
   // --- Ajustes ------------------------------------------------------------
   ipcMain.handle('settings:all', () => settings.all());
