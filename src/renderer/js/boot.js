@@ -11,6 +11,8 @@ import { crearPaleta } from './paleta.js';
 import { crearVisualizador } from './visualizador.js';
 import { crearFavoritos } from './favoritos.js';
 import { crearListas } from './listas.js';
+import { crearAcciones } from './acciones.js';
+import { initAtajos } from './atajos.js';
 import { $, pintarGlifo } from './dom.js';
 
 const raiz = document.documentElement;
@@ -37,9 +39,12 @@ async function boot() {
   const listas = await crearListas();
   const shell = initShell(motor, ajustes, { favoritos, listas });
   initTransporte(motor, { favoritos });
-  engancharCola(motor, ajustes);
+  const cola = engancharCola(motor, ajustes);
   engancharPaleta(motor, ajustes);
   engancharVisualizador(motor, ajustes);
+
+  const acciones = crearAcciones({ motor, shell, favoritos, cola, raiz });
+  initAtajos(acciones);
 
   motor.queue.on('track', ({ track }) => {
     const titulo = track ? `${track.artist} — ${track.title}` : 'Sounde';
@@ -119,17 +124,20 @@ function engancharCola(motor, ajustes) {
     boton.title = abierta ? 'Ocultar la cola' : 'Cola de reproduccion';
   };
 
-  boton.addEventListener('click', () => {
+  const alternar = () => {
     const abierta = raiz.dataset.cola !== 'abierta';
     pintar(abierta);
     window.sounde.settings.set({ queueOpen: abierta });
     // Al abrirla interesa ver donde va la reproduccion, no el principio de
     // una cola de dos mil canciones.
     if (abierta) requestAnimationFrame(() => cola.irAActual());
-  });
+    return abierta;
+  };
+
+  boton.addEventListener('click', alternar);
 
   pintar(!!ajustes.queueOpen);
-  return cola;
+  return { ...cola, alternar };
 }
 
 export function aplicarAjustes(ajustes) {

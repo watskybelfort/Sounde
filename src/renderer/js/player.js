@@ -302,12 +302,17 @@ export class Player {
   setVolume(v) {
     this.volume = clamp(Number(v) || 0, 0, 1);
     this._aplicarMaster();
+    // Avisar no es opcional: el volumen se cambia desde el mando, desde el
+    // teclado y desde los ajustes, y sin evento el mando se queda quieto
+    // mientras el sonido sube, que parece que el atajo no funciona.
+    this._emit('volumen', { volume: this.volume, muted: this.muted });
     return this.volume;
   }
 
   setMuted(m) {
     this.muted = !!m;
     this._aplicarMaster();
+    this._emit('volumen', { volume: this.volume, muted: this.muted });
     return this.muted;
   }
 

@@ -205,6 +205,7 @@ export function initTransporte(motor, { favoritos } = {}) {
     if (!bucle) pintarTiempo();
   });
 
+  player.on('volumen', pintarVolumen);
   queue.on('mode', pintarModos);
 
   pintarPista(null);
