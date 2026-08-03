@@ -16,12 +16,12 @@
 
 .app {
   display: grid;
-  grid-template-columns: var(--ancho-lateral) minmax(0, 1fr);
+  grid-template-columns: var(--ancho-lateral) minmax(0, 1fr) var(--ancho-cola);
   grid-template-rows: var(--alto-titulo) minmax(0, 1fr) var(--alto-transporte);
   grid-template-areas:
-    'titulo     titulo'
-    'lateral    vista'
-    'transporte transporte';
+    'titulo     titulo     titulo'
+    'lateral    vista      cola'
+    'transporte transporte transporte';
   height: 100vh;
   transition: grid-template-columns var(--dur-2) var(--ease-in-out);
 }
@@ -32,7 +32,7 @@
 .transporte { grid-area: transporte; }
 
 :root[data-lateral='plegado'] .app {
-  grid-template-columns: var(--ancho-lateral-min) minmax(0, 1fr);
+  grid-template-columns: var(--ancho-lateral-min) minmax(0, 1fr) var(--ancho-cola);
 }
 
 /* En mini-player desaparece todo menos el transporte. */
@@ -45,7 +45,8 @@
 }
 
 :root[data-mini='true'] .lateral,
-:root[data-mini='true'] .vista {
+:root[data-mini='true'] .vista,
+:root[data-mini='true'] .cola {
   display: none;
 }
 

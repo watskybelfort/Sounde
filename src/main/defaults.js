@@ -54,6 +54,7 @@ const DEFAULT_SETTINGS = {
   sortDir: 'asc',
   view: 'songs',
   sidebarCollapsed: false,
+  queueOpen: false,
 
   // --- Ventana ------------------------------------------------------------
   bounds: null,

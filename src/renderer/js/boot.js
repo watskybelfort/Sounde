@@ -6,7 +6,8 @@ import { initTitlebar } from './titlebar.js';
 import { crearMotor } from './engine.js';
 import { initShell } from './shell.js';
 import { initTransporte } from './transport.js';
-import { $ } from './dom.js';
+import { crearCola } from './cola.js';
+import { $, pintarGlifo } from './dom.js';
 
 const raiz = document.documentElement;
 
@@ -30,6 +31,7 @@ async function boot() {
   const motor = await crearMotor(ajustes);
   const shell = initShell(motor, ajustes);
   initTransporte(motor);
+  engancharCola(motor, ajustes);
 
   motor.queue.on('track', ({ track }) => {
     const titulo = track ? `${track.artist} — ${track.title}` : 'Sounde';
@@ -46,6 +48,34 @@ async function boot() {
   });
 
   await shell.refrescar();
+}
+
+function engancharCola(motor, ajustes) {
+  const cola = crearCola(motor.queue, motor.player);
+  // Va dentro de .app porque ocupa una columna de la rejilla: colgado del
+  // body quedaria fuera del reparto y taparia el transporte.
+  document.querySelector('.app').append(cola.nodo);
+
+  const boton = $('#btn-cola');
+  pintarGlifo(boton, 'cola');
+
+  const pintar = (abierta) => {
+    raiz.dataset.cola = abierta ? 'abierta' : 'cerrada';
+    boton.setAttribute('aria-pressed', String(abierta));
+    boton.title = abierta ? 'Ocultar la cola' : 'Cola de reproduccion';
+  };
+
+  boton.addEventListener('click', () => {
+    const abierta = raiz.dataset.cola !== 'abierta';
+    pintar(abierta);
+    window.sounde.settings.set({ queueOpen: abierta });
+    // Al abrirla interesa ver donde va la reproduccion, no el principio de
+    // una cola de dos mil canciones.
+    if (abierta) requestAnimationFrame(() => cola.irAActual());
+  });
+
+  pintar(!!ajustes.queueOpen);
+  return cola;
 }
 
 export function aplicarAjustes(ajustes) {
