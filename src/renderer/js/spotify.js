@@ -142,6 +142,23 @@ export function crearVistaSpotify({ queue, resolver, listas }) {
       filtro === 'todo' || (filtro === 'tengo' ? !!i.local : !i.local)
     ));
 
+    /*
+     * Desde febrero de 2026 Spotify solo deja leer las canciones de tus
+     * listas y de aquellas en las que colaboras. Las que solo sigues llegan
+     * vacias, y una lista vacia sin explicacion parece que Sounde ha perdido
+     * su contenido.
+     */
+    if (datos.sinAcceso) {
+      return el('div', { class: 'vacio vacio--vista' }, [
+        el('div', { class: 'vacio__icono', texto: glifo('lista') }),
+        el('h2', { class: 'vacio__titulo', texto: 'Esta lista no es tuya' }),
+        el('p', {
+          class: 'vacio__texto',
+          texto: 'Spotify solo deja leer las canciones de tus propias listas y de aquellas en las que colaboras. De las que solo sigues no da el contenido, asi que no hay nada que cruzar con tu biblioteca.',
+        }),
+      ]);
+    }
+
     if (!visibles.length) {
       return el('div', { class: 'vacio vacio--vista' }, [
         el('div', { class: 'vacio__icono', texto: glifo(filtro === 'faltan' ? 'corazonLleno' : 'buscar') }),

@@ -25,8 +25,13 @@ const VERSION = 1;
 /** Caratulas a la vez. Mas no baja el tiempo: el cuello es el ancho de banda. */
 const PARALELO_ARTE = 6;
 
-/** Tamaño de lote de los endpoints que aceptan varios ids. */
-const LOTE_TRACKS = 50;
+/**
+ * Maximo por pagina de `/playlists/{id}/items`.
+ *
+ * Eran 100 hasta febrero de 2026; ahora el tope es 50 y pedir mas devuelve
+ * un error de parametro, no una pagina recortada.
+ */
+const LOTE_ITEMS = 50;
 
 let store = null;
 
@@ -197,15 +202,34 @@ async function sincronizar({ onProgress = () => {}, senal } = {}) {
       detalle: lista.name ?? '',
     });
 
-    const { items, completo } = await api.paginar(
-      `/playlists/${lista.id}/tracks?fields=${CAMPOS_LISTA}`,
-      { limite: 100, senal },
-    );
+    let items = [];
+    let completo = true;
+    let sinAcceso = false;
+    try {
+      ({ items, completo } = await api.paginar(
+        `/playlists/${lista.id}/items?fields=${CAMPOS_LISTA}`,
+        { limite: LOTE_ITEMS, senal },
+      ));
+    } catch (err) {
+      /*
+       * Desde febrero de 2026 solo se pueden leer las canciones de las listas
+       * propias o en las que colaboras; las que solo sigues devuelven 403.
+       *
+       * Y `/me/playlists` sigue devolviendo las seguidas, asi que casi
+       * cualquier cuenta real tiene alguna. Si un 403 abortara la
+       * sincronizacion entera, la funcion no le serviria practicamente a
+       * nadie: la lista entra vacia, marcada, y el resto sigue.
+       */
+      if (err.status !== 403 && err.status !== 404) throw err;
+      sinAcceso = true;
+    }
 
     const ids = [];
     let descartadas = 0;
     for (const fila of items) {
-      const pista = normalizarPista(fila?.track);
+      // `item` desde febrero de 2026; `track` era el nombre viejo y se acepta
+      // por si alguna respuesta todavia lo trae.
+      const pista = normalizarPista(fila?.item ?? fila?.track);
       if (!pista) {
         descartadas++;
         continue;
@@ -229,6 +253,7 @@ async function sincronizar({ onProgress = () => {}, senal } = {}) {
       // una lista de 50 que aparece con 47 parece un fallo de Sounde.
       descartadas,
       completo,
+      sinAcceso,
     });
   }
 
@@ -271,7 +296,7 @@ async function sincronizar({ onProgress = () => {}, senal } = {}) {
  * que se descargan y se tiran.
  */
 const CAMPOS_LISTA = encodeURIComponent(
-  'next,total,items(added_at,is_local,track(id,uri,type,name,duration_ms,track_number,disc_number,is_local,'
+  'next,total,items(added_at,is_local,item(id,uri,type,name,duration_ms,track_number,disc_number,is_local,'
   + 'artists(name),album(id,name,release_date,images)))',
 );
 

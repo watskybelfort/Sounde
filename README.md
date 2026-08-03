@@ -83,6 +83,23 @@ lista de Spotify entra, se cruza con tu disco, y te dice qué tienes y qué no.
 Lo que falta lo consigues por donde tú decidas, y en cuanto el archivo cae en
 una carpeta vigilada la lista se completa sola.
 
+### Hace falta Premium, y no por lo que parece
+
+Desde **febrero de 2026** Spotify exige que la cuenta que **registra la app de
+desarrollador** tenga Premium. Una cuenta gratuita ya no puede crear una, así
+que sin Premium esta parte de Sounde no se puede usar. No es cosa nuestra ni
+tiene nada que ver con reproducir: es el requisito para tener un Client ID.
+
+Del mismo cambio salen otros tres límites que conviene saber:
+
+- Un solo Client ID en modo desarrollo por cuenta.
+- Hasta cinco usuarios autorizados por aplicación. Para uso propio sobra.
+- **Solo se pueden leer las canciones de tus listas y de aquellas en las que
+  colaboras.** Las que solo sigues devuelven `403`, así que aparecen en la
+  barra lateral pero entran vacías y marcadas. Sounde no aborta por eso: una
+  cuenta normal tiene listas seguidas, y si un `403` tumbara la
+  sincronización, la función no le serviría a casi nadie.
+
 ### Cómo se conecta
 
 Hace falta un Client ID tuyo, del panel de Spotify, y no viene ninguno puesto.

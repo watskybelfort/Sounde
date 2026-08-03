@@ -146,6 +146,7 @@ function listas() {
       art: lista.art,
       total: lista.tracks.length,
       descartadas: lista.descartadas ?? 0,
+      sinAcceso: !!lista.sinAcceso,
       encontradas,
       faltan: lista.tracks.length - encontradas,
     });
@@ -170,6 +171,7 @@ function lista(id) {
     uri: encontrada.uri,
     art: encontrada.art,
     descartadas: encontrada.descartadas ?? 0,
+    sinAcceso: !!encontrada.sinAcceso,
     encontradas,
     faltan,
     items: items.map(conArte),
