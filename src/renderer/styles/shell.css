@@ -185,24 +185,46 @@
   padding: 0;
 }
 
-.lateral__pie {
-  margin-top: auto;
-  padding-top: 10px;
-}
-
-/* El grupo de listas es el que cede sitio cuando la ventana es baja: las
-   carpetas son cuatro y las listas pueden ser cuarenta. */
-.lateral__grupo--listas {
+/*
+ * La zona que desplaza. `min-height: 0` no es opcional: sin el, un hijo flex
+ * se niega a encoger por debajo de su contenido y el lateral crece hasta
+ * empujar el pie fuera de la ventana en vez de aparecer la barra.
+ */
+.lateral__scroll {
+  flex: 1;
   min-height: 0;
-  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Los margenes negativos dejan que el resalte de las filas llegue al borde
+     sin que la barra se coma el relleno del lateral. */
+  margin: 0 -4px;
+  padding: 0 4px;
 }
 
+.lateral__pie {
+  padding-top: 10px;
+  border-top: 1px solid var(--realce-borde);
+  margin-top: 10px;
+}
+
+/* Ya no cede sitio nadie: con el lateral desplazando entero, cada grupo ocupa
+   lo que necesita y la barra se encarga del resto. */
+.lateral__grupo--listas {
+  flex: 0 0 auto;
+}
+
+/*
+ * Las listas NO llevan su propio desplazamiento.
+ *
+ * Lo llevaban, y con un solo grupo funcionaba. Al aparecer los servicios
+ * conectados el lateral pasó a tener cuatro zonas que crecen, cada una con su
+ * barra diminuta, y la de abajo quedaba fuera de pantalla sin forma de llegar
+ * a ella. Ahora desplaza `.lateral__scroll` entero y hay una sola barra.
+ */
 .lateral__listas {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  min-height: 0;
-  overflow-y: auto;
   margin: 0 -4px;
   padding: 0 4px;
 }
@@ -214,12 +236,11 @@
 
 /* Carpetas vigiladas */
 
+/* Tampoco desplazan por su cuenta, por lo mismo que las listas. */
 .lateral__carpetas {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  min-height: 0;
-  overflow-y: auto;
   margin: 0 -4px;
   padding: 0 4px;
 }
@@ -580,4 +601,14 @@
   font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
   font-size: 34px;
   color: rgb(var(--acento));
+}
+
+/* "N escondidas": esta ahi para poder deshacer, no para mirarlo. */
+.lateral__item--tenue {
+  opacity: 0.55;
+  font-style: italic;
+}
+
+.lateral__item--tenue:hover {
+  opacity: 1;
 }
