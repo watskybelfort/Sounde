@@ -8,6 +8,7 @@ import { initShell } from './shell.js';
 import { initTransporte } from './transport.js';
 import { crearCola } from './cola.js';
 import { crearPaleta } from './paleta.js';
+import { crearVisualizador } from './visualizador.js';
 import { $, pintarGlifo } from './dom.js';
 
 const raiz = document.documentElement;
@@ -34,6 +35,7 @@ async function boot() {
   initTransporte(motor);
   engancharCola(motor, ajustes);
   engancharPaleta(motor, ajustes);
+  engancharVisualizador(motor, ajustes);
 
   motor.queue.on('track', ({ track }) => {
     const titulo = track ? `${track.artist} — ${track.title}` : 'Sounde';
@@ -50,6 +52,20 @@ async function boot() {
   });
 
   await shell.refrescar();
+}
+
+function engancharVisualizador(motor, ajustes) {
+  const visual = crearVisualizador(motor.player, { modo: ajustes.visualizer ?? 'bars' });
+  // Primer hijo del transporte: como esta posicionado en absoluto, el orden
+  // no afecta al reparto de la rejilla, pero deja claro que va debajo.
+  document.querySelector('.transporte').prepend(visual.nodo);
+  visual.setModo(ajustes.visualizer ?? 'bars');
+
+  window.sounde.settings.onChange((patch) => {
+    if (patch.visualizer !== undefined) visual.setModo(patch.visualizer);
+  });
+
+  return visual;
 }
 
 function engancharPaleta(motor, ajustes) {

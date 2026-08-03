@@ -4,6 +4,7 @@
  * ==========================================================================*/
 
 .transporte {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 2fr) minmax(0, 1fr);
   align-items: center;
@@ -11,6 +12,26 @@
   padding: 0 16px;
   background: var(--vidrio-2);
   border-top: 1px solid var(--realce-borde);
+}
+
+/* El visualizador vive detras de los mandos, no al lado: asi ocupa todo el
+   ancho sin robarle sitio a nada. El degradado de las propias barras ya las
+   disuelve hacia arriba; esta mascara solo recorta contra el borde superior
+   para que ninguna toque la linea que separa del contenido. */
+.visualizador {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  mask-image: linear-gradient(to top, #000 0%, #000 78%, transparent 100%);
+}
+
+.transporte > .ahora,
+.transporte > .mandos,
+.transporte > .extras {
+  position: relative;
+  z-index: 1;
 }
 
 /* ---------------------------------------------------------- lo que suena */
