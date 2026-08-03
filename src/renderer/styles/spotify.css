@@ -1,0 +1,233 @@
+/*
+ * Vista de una lista de Spotify cruzada con la biblioteca.
+ *
+ * Lo que no tienes se ve, apagado, y no se esconde: esconderlo convertiria la
+ * lista en otra lista, y saber que te falta es para lo que sirve esto.
+ *
+ * OJO: nada que derive de --acento lleva `transition`. El bucle del color
+ * adaptativo reescribe esa variable en cada fotograma y una transicion encima
+ * se reinicia sesenta veces por segundo sin converger nunca.
+ */
+
+/*
+ * El desplazamiento lo lleva `.sp__filas`, no el cuerpo de la vista.
+ *
+ * Con los dos desplazando pasa lo mismo que documenta la letra: dos
+ * contenedores anidados y el de fuera se mueve cuando no toca. Aqui ademas la
+ * cabecera con la caratula se iria hacia arriba y dejaria de decir cuantas
+ * tienes justo mientras recorres la lista para verlo.
+ */
+.vista__cuerpo[data-modo='spotify'] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.sp {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+/* --- Cabecera -------------------------------------------------------------- */
+
+.sp__cabecera {
+  display: flex;
+  gap: 20px;
+  padding: 4px 4px 20px;
+}
+
+.sp__arte {
+  flex: 0 0 auto;
+  width: 172px;
+  height: 172px;
+  border-radius: var(--radio-2);
+  object-fit: cover;
+  box-shadow: var(--sombra-2);
+}
+
+.sp__arte--vacio {
+  display: grid;
+  place-items: center;
+  background: var(--vidrio-2);
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 44px;
+  color: var(--texto-3);
+}
+
+.sp__info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.sp__tipo {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texto-3);
+}
+
+.sp__titulo {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.sp__desc {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--texto-2);
+}
+
+.sp__cuenta {
+  margin: 2px 0 8px;
+  font-size: 12.5px;
+  color: var(--texto-2);
+}
+
+.sp__cuenta strong {
+  color: var(--texto);
+}
+
+.sp__nota {
+  color: var(--texto-3);
+}
+
+.sp__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sp__filtros {
+  margin-top: 12px;
+  align-self: flex-start;
+}
+
+/* --- Filas ----------------------------------------------------------------- */
+
+.sp__filas {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+/* Las mismas proporciones que la lista de la biblioteca: son dos listas de
+   canciones en la misma ventana y deben leerse como la misma cosa. */
+.sp__fila {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 2.4fr) minmax(0, 1.5fr) 30px 64px;
+  align-items: center;
+  gap: 12px;
+  height: 52px;
+  padding: 0 10px;
+  border-radius: var(--radio-1);
+  text-align: left;
+}
+
+/* En ventanas estrechas el album estorba antes que nada, igual que alli. */
+@container (max-width: 620px) {
+  .sp__fila {
+    grid-template-columns: 40px minmax(0, 1fr) 30px 64px;
+  }
+
+  .sp__fila-album {
+    display: none;
+  }
+}
+
+/* Solo lo que tiene archivo detras responde: una fila que se ilumina y luego
+   no hace nada al pulsarla se lee como un fallo, no como "no la tienes". */
+.sp__fila[data-tengo='true'] {
+  cursor: pointer;
+}
+
+.sp__fila[data-tengo='true']:hover {
+  background: var(--hover);
+}
+
+.sp__fila[data-tengo='true']:active {
+  background: var(--pulsado);
+}
+
+.sp__fila[data-tengo='true']:focus-visible {
+  outline: 2px solid rgb(var(--acento));
+  outline-offset: -2px;
+}
+
+.sp__fila[data-tengo='false'] {
+  opacity: 0.45;
+}
+
+.sp__fila-arte {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radio-1);
+  object-fit: cover;
+}
+
+.sp__fila-arte--vacio {
+  display: grid;
+  place-items: center;
+  background: var(--vidrio-2);
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 15px;
+  color: var(--texto-3);
+}
+
+.sp__fila-texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.sp__fila-titulo {
+  font-size: 13px;
+}
+
+.sp__fila-artista,
+.sp__fila-album {
+  font-size: 12px;
+  color: var(--texto-2);
+}
+
+.sp__fila-marca {
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 14px;
+  text-align: center;
+  color: var(--texto-3);
+}
+
+.sp__fila-marca[data-confianza='exacta'] {
+  color: rgb(var(--acento));
+}
+
+/* La emparejada por parecido se distingue de la exacta: el enlace lo hicimos
+   nosotros, y si suena otra cosa aqui es donde se mira para entenderlo. */
+.sp__fila-marca[data-confianza='probable'] {
+  color: var(--texto-2);
+}
+
+.sp__fila-tiempo {
+  font-size: 12px;
+  color: var(--texto-3);
+  text-align: right;
+  padding-right: 10px;
+}
+
+/* --- Lateral --------------------------------------------------------------- */
+
+.lateral__grupo--spotify[data-sincronizando='true'] .lateral__accion {
+  opacity: 0.5;
+  pointer-events: none;
+}

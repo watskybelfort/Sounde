@@ -18,6 +18,7 @@ import { pistasDe } from './listas.js';
 import { abrirMenu } from './menu.js';
 import { pedirTexto, confirmar } from './dialogo.js';
 import { crearLetra } from './letra.js';
+import { crearVistaSpotify } from './spotify.js';
 
 const raiz = document.documentElement;
 
@@ -340,6 +341,7 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
     if (v.tipo === 'artista') return v.clave.nombre;
     if (v.tipo === 'lista') return v.clave.name;
     if (v.tipo === 'letra') return 'Letra';
+    if (v.tipo === 'spotify') return vistaSpotify.datos?.name ?? 'Spotify';
     return TITULOS[v.tipo] ?? 'Canciones';
   }
 
@@ -352,6 +354,88 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
    * como vista de arranque: reabrir la app en la letra de nada seria absurdo.
    */
   const letra = crearLetra({ player });
+
+  // --- Spotify --------------------------------------------------------------
+
+  /**
+   * El catalogo de Spotify, si hay cuenta conectada.
+   *
+   * Como la letra, no esta en TITULOS: no es una seccion de la biblioteca
+   * local, y guardarla como vista de arranque haria que Sounde abriera en una
+   * lista remota vacia mientras se sincroniza.
+   */
+  const vistaSpotify = crearVistaSpotify({
+    queue,
+    listas,
+    // La vista solo guarda el id local; la pista de verdad la tiene el shell.
+    resolver: (id) => pistas.find((t) => t.id === id) ?? null,
+  });
+
+  let listasSpotify = [];
+  const grupoSpotify = $('#grupo-spotify');
+  const contenedorSpotify = $('#lista-spotify');
+  const btnSincronizar = $('#btn-sincronizar-spotify');
+
+  pintarGlifo(btnSincronizar, 'refrescar');
+
+  btnSincronizar?.addEventListener('click', async () => {
+    grupoSpotify.dataset.sincronizando = 'true';
+    await window.sounde.spotify.sincronizar();
+    delete grupoSpotify.dataset.sincronizando;
+    await refrescarSpotify();
+  });
+
+  async function refrescarSpotify() {
+    const estado = await window.sounde.spotify.estado();
+    grupoSpotify.hidden = !estado.conectado;
+    if (!estado.conectado) {
+      listasSpotify = [];
+      // Si estabas mirando una lista de Spotify y desconectas la cuenta, esa
+      // vista ya no existe: quedarse ahi deja una pantalla muerta.
+      if (vista.tipo === 'spotify') ir({ tipo: 'canciones' });
+      pintarListasSpotify();
+      return;
+    }
+    listasSpotify = await window.sounde.spotify.listas();
+    pintarListasSpotify();
+    if (vista.tipo === 'spotify') await abrirListaSpotify(vista.clave, true);
+  }
+
+  function pintarListasSpotify() {
+    if (!contenedorSpotify) return;
+    const items = [
+      { id: '__guardadas__', name: 'Tus me gusta', total: null },
+      ...listasSpotify,
+    ];
+    contenedorSpotify.replaceChildren(...(grupoSpotify.hidden ? [] : items.map((p) => el('button', {
+      class: 'lateral__item',
+      title: p.total === null ? p.name : `${p.name} — ${p.encontradas} de ${p.total} las tienes`,
+      'aria-current': String(vista.tipo === 'spotify' && vista.clave === p.id),
+      onClick: () => abrirListaSpotify(p.id),
+    }, [
+      el('span', { class: 'lateral__icono', texto: glifo(p.id === '__guardadas__' ? 'corazonLleno' : 'lista') }),
+      el('span', { class: 'lateral__texto', texto: p.name }),
+      el('span', {
+        class: 'lateral__cuenta tabular',
+        texto: p.total ? `${p.encontradas}/${p.total}` : '',
+      }),
+    ]))));
+  }
+
+  /** `silencioso` repinta sin mover la navegacion, tras una sincronizacion. */
+  async function abrirListaSpotify(id, silencioso = false) {
+    const lista = await window.sounde.spotify.lista(id);
+    if (!lista) {
+      if (!silencioso) ir({ tipo: 'canciones' });
+      return;
+    }
+    vistaSpotify.mostrar(lista);
+    if (!silencioso) ir({ tipo: 'spotify', clave: id });
+    else pintarListasSpotify();
+  }
+
+  window.sounde.spotify.onCambio(() => refrescarSpotify());
+  refrescarSpotify();
 
   function alternarLetra() {
     if (vista.tipo === 'letra') volver();
@@ -531,6 +615,12 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
     pintarCarpetas(carpetas);
     marcarActual();
     pintarCuerpo();
+
+    // El recuento de "cuantas de esta lista ya tienes" se calcula contra la
+    // biblioteca, asi que un archivo nuevo lo cambia. Sin esto, añades la
+    // cancion que faltaba y la lista de Spotify la sigue dando por ausente
+    // hasta reiniciar.
+    refrescarSpotify();
     return pistas;
   }
 
@@ -640,6 +730,12 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
       return;
     }
 
+    if (vista.tipo === 'spotify') {
+      const d = vistaSpotify.datos;
+      resumen.textContent = d ? `${d.encontradas} de ${d.items.length} en tu biblioteca` : '';
+      return;
+    }
+
     if (!pistas.length) {
       resumen.textContent = 'Sin musica todavia';
       return;
@@ -679,11 +775,27 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
       boton.setAttribute('aria-current', String(tipo === base() && vista.tipo !== 'lista'));
     }
     pintarListas();
+    pintarListasSpotify();
     tituloVista.textContent = vista.tipo === 'lista' ? 'Listas'
-      : vista.tipo === 'letra' ? 'Letra' : TITULOS[base()];
-    acciones.dataset.ficha = String(enFicha || vista.tipo === 'lista' || vista.tipo === 'letra');
+      : vista.tipo === 'letra' ? 'Letra'
+        : vista.tipo === 'spotify' ? 'Spotify' : TITULOS[base()];
+    acciones.dataset.ficha = String(
+      enFicha || vista.tipo === 'lista' || vista.tipo === 'letra' || vista.tipo === 'spotify',
+    );
 
     letra.setVisible(vista.tipo === 'letra');
+
+    /*
+     * Antes del corte por biblioteca vacia, igual que la letra: una lista de
+     * Spotify se puede mirar sin tener una sola cancion en el disco. De hecho
+     * es cuando mas sirve — es la lista de lo que te falta entero.
+     */
+    if (vista.tipo === 'spotify') {
+      cuerpo.dataset.modo = 'spotify';
+      cuerpo.replaceChildren(vistaSpotify.nodo);
+      pintarResumen();
+      return;
+    }
     if (vista.tipo === 'letra') {
       // Antes del corte por biblioteca vacia: una cancion abierta con "Abrir
       // con..." no esta en la lista y su letra se puede leer igual.
@@ -860,7 +972,7 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
   }
 
   return {
-    refrescar, ir, alternarLetra, onVista, lista,
+    refrescar, ir, alternarLetra, onVista, lista, refrescarSpotify,
     get pistas() { return pistas; },
     get vista() { return vista; },
   };
