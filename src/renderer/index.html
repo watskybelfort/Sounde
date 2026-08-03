@@ -69,6 +69,15 @@
         <span class="lateral__icono" id="icono-artistas" aria-hidden="true"></span>
         <span class="lateral__texto">Artistas</span>
       </button>
+      <button class="lateral__item" id="nav-favoritos" aria-current="false">
+        <span class="lateral__icono" id="icono-favoritos" aria-hidden="true"></span>
+        <span class="lateral__texto">Favoritos</span>
+        <span class="lateral__cuenta tabular" id="cuenta-favoritos"></span>
+      </button>
+      <button class="lateral__item" id="nav-recientes" aria-current="false">
+        <span class="lateral__icono" id="icono-recientes" aria-hidden="true"></span>
+        <span class="lateral__texto">Recientes</span>
+      </button>
     </div>
 
     <div class="lateral__grupo">
@@ -125,6 +134,8 @@
         <div class="ahora__titulo truncar" id="ahora-titulo">Nada sonando</div>
         <div class="ahora__artista truncar" id="ahora-artista">Elige algo y dale al play</div>
       </div>
+      <button class="icono-btn ahora__fav" id="btn-favorito" aria-pressed="false"
+              title="Anadir a favoritos" aria-label="Anadir a favoritos"></button>
     </div>
 
     <div class="mandos">

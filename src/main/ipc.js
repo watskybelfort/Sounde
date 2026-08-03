@@ -12,7 +12,7 @@ const { AUDIO_EXTENSIONS, EQ_BANDS, EQ_PRESETS } = require('./defaults');
  * `ctx` lleva { getWindow, settings, library }.
  */
 function registerIpc(ctx) {
-  const { getWindow, settings, library } = ctx;
+  const { getWindow, settings, library, collections } = ctx;
 
   const withWindow = (fn) => (...args) => {
     const win = getWindow();
@@ -148,6 +148,25 @@ function registerIpc(ctx) {
     if (typeof ruta === 'string' && ruta) shell.showItemInFolder(ruta);
     return true;
   });
+
+  // --- Favoritos e historial ----------------------------------------------
+  ipcMain.handle('coll:all', () => collections.all());
+
+  ipcMain.handle('coll:toggle-favorite', (_e, id) => {
+    const valor = collections.toggleFavorite(id);
+    emitir('coll:changed', { favorites: collections.favoriteIds() });
+    return valor;
+  });
+
+  ipcMain.handle('coll:played', (_e, id) => {
+    const stats = collections.played(id);
+    // Avisar es lo que hace que "Recientes" se actualice mientras suena, en
+    // vez de solo al reabrir la aplicacion.
+    emitir('coll:played', { id, stats });
+    return stats;
+  });
+
+  ipcMain.handle('coll:recent', (_e, limite) => collections.recentIds(limite));
 
   // --- Varios -------------------------------------------------------------
   ipcMain.handle('app:info', () => ({

@@ -21,9 +21,11 @@ const TITULOS = {
   canciones: 'Canciones',
   albumes: 'Albumes',
   artistas: 'Artistas',
+  favoritos: 'Favoritos',
+  recientes: 'Recientes',
 };
 
-export function initShell(motor, ajustes = {}) {
+export function initShell(motor, ajustes = {}, { favoritos } = {}) {
   const { queue, player } = motor;
 
   const cuerpo = $('#vista-cuerpo');
@@ -38,6 +40,8 @@ export function initShell(motor, ajustes = {}) {
   pintarGlifo($('#icono-canciones'), 'musica');
   pintarGlifo($('#icono-albumes'), 'album');
   pintarGlifo($('#icono-artistas'), 'artista');
+  pintarGlifo($('#icono-favoritos'), 'corazonLleno');
+  pintarGlifo($('#icono-recientes'), 'reciente');
   pintarGlifo($('#icono-anadir'), 'anadir');
   pintarGlifo($('#icono-abrir'), 'abrir');
   pintarGlifo($('#btn-reescanear'), 'refrescar');
@@ -49,6 +53,7 @@ export function initShell(motor, ajustes = {}) {
   let pistas = [];
   let albumes = [];
   let artistas = [];
+  let recientes = [];
   let filtro = '';
   let vista = { tipo: TITULOS[ajustes.view] ? ajustes.view : 'canciones' };
 
@@ -56,10 +61,17 @@ export function initShell(motor, ajustes = {}) {
 
   const reproducirDesde = (track, _i, visibles) => queue.setContext(visibles, { startId: track.id });
 
+  const alternarFavorito = (track) => favoritos?.alternar(track?.id);
+
   const lista = crearLista({
     onReproducir: reproducirDesde,
-    onOrden: ({ por, dir }) => window.sounde.settings.set({ sortBy: por, sortDir: dir }),
-    onFiltrado: () => { if (vista.tipo === 'canciones') pintarResumen(); },
+    onFavorito: alternarFavorito,
+    onOrden: ({ por, dir }) => {
+      // El orden solo se guarda desde Canciones. En Recientes o Favoritos el
+      // orden es de la vista, no del gusto del usuario para la biblioteca.
+      if (vista.tipo === 'canciones') window.sounde.settings.set({ sortBy: por, sortDir: dir });
+    },
+    onFiltrado: () => pintarResumen(),
   });
   lista.setOrden(ajustes.sortBy, ajustes.sortDir);
 
@@ -67,6 +79,7 @@ export function initShell(motor, ajustes = {}) {
   // enseñar: el orden es el del disco y el album es siempre el mismo.
   const listaAlbum = crearLista({
     onReproducir: reproducirDesde,
+    onFavorito: alternarFavorito,
     conCabecera: false,
     conAlbum: false,
     conArte: false,
@@ -83,12 +96,23 @@ export function initShell(motor, ajustes = {}) {
   player.on('trackchange', marcarActual);
   player.on('state', marcarActual);
 
+  favoritos?.on('cambio', (ids) => {
+    lista.setFavoritos(ids);
+    listaAlbum.setFavoritos(ids);
+    pintarCuentaFavoritos();
+    // Quitar un favorito estando en la vista de Favoritos tiene que sacarlo
+    // de la lista en el momento, no a la siguiente visita.
+    if (vista.tipo === 'favoritos') pintarCuerpo();
+  });
+
   // --- Navegacion -----------------------------------------------------------
 
   const navs = {
     canciones: $('#nav-canciones'),
     albumes: $('#nav-albumes'),
     artistas: $('#nav-artistas'),
+    favoritos: $('#nav-favoritos'),
+    recientes: $('#nav-recientes'),
   };
 
   for (const [tipo, boton] of Object.entries(navs)) {
@@ -125,6 +149,13 @@ export function initShell(motor, ajustes = {}) {
     lista.setFiltro('');
     if (TITULOS[nueva.tipo]) window.sounde.settings.set({ view: nueva.tipo });
     pintarCuerpo();
+    // Al entrar en Recientes se relee el historial: puede haber cambiado
+    // desde la ultima vez sin que nadie tocara la biblioteca.
+    if (nueva.tipo === 'recientes') {
+      refrescarRecientes().then(() => {
+        if (vista.tipo === 'recientes') pintarCuerpo();
+      });
+    }
   }
 
   function etiquetaDe(v) {
@@ -207,7 +238,9 @@ export function initShell(motor, ajustes = {}) {
 
   /** Las pistas de la vista actual, respetando el filtro. */
   function loQueSeVe() {
-    if (vista.tipo === 'canciones') return lista.visibles;
+    if (vista.tipo === 'canciones' || vista.tipo === 'favoritos' || vista.tipo === 'recientes') {
+      return lista.visibles;
+    }
     if (vista.tipo === 'albumes') return albumesFiltrados().flatMap((a) => a.pistas);
     if (vista.tipo === 'artistas') return artistasFiltrados().flatMap((a) => a.pistas);
     if (vista.tipo === 'album') return vista.clave?.pistas ?? [];
@@ -288,14 +321,50 @@ export function initShell(motor, ajustes = {}) {
     albumes = agruparAlbumes(pistas);
     artistas = agruparArtistas(pistas);
 
+    await refrescarRecientes();
+
+    lista.setFavoritos(favoritos?.ids ?? new Set());
+    listaAlbum.setFavoritos(favoritos?.ids ?? new Set());
+    pintarCuentaFavoritos();
+
     // Una ficha abierta puede haber dejado de existir tras un reescaneo.
     if (vista.tipo === 'album') vista = revalidar(albumes, 'albumes');
     else if (vista.tipo === 'artista') vista = revalidar(artistas, 'artistas');
 
     pintarCarpetas(carpetas);
-    lista.setPistas(pistas);
     marcarActual();
     pintarCuerpo();
+    return pistas;
+  }
+
+  /**
+   * El historial guarda ids; las pistas que ya no estan en la biblioteca se
+   * caen solas al no encontrarse en el mapa. Se recalcula al entrar en la
+   * vista y cada vez que se anota una escucha, o "Recientes" solo diria la
+   * verdad justo despues de abrir la aplicacion.
+   */
+  async function refrescarRecientes() {
+    const porId = new Map(pistas.map((t) => [t.id, t]));
+    const ids = await window.sounde.collections.recent(200);
+    recientes = ids.map((id) => porId.get(id)).filter(Boolean);
+  }
+
+  window.sounde.collections.onPlayed(async () => {
+    await refrescarRecientes();
+    if (vista.tipo === 'recientes') pintarCuerpo();
+  });
+
+  function pintarCuentaFavoritos() {
+    const cuenta = $('#cuenta-favoritos');
+    if (!cuenta) return;
+    const n = pistas.filter((t) => favoritos?.tiene(t.id)).length;
+    cuenta.textContent = n ? String(n) : '';
+  }
+
+  /** Las pistas que alimentan la lista principal segun la vista. */
+  function fuenteDeLista() {
+    if (vista.tipo === 'favoritos') return pistas.filter((t) => favoritos?.tiene(t.id));
+    if (vista.tipo === 'recientes') return recientes;
     return pistas;
   }
 
@@ -349,13 +418,17 @@ export function initShell(motor, ajustes = {}) {
       return;
     }
 
-    if (vista.tipo === 'canciones') {
+    if (vista.tipo === 'canciones' || vista.tipo === 'favoritos' || vista.tipo === 'recientes') {
       const visibles = lista.visibles;
+      const fuente = fuenteDeLista().length;
       const total = visibles.reduce((s, t) => s + (t.duration || 0), 0);
-      const filtrando = visibles.length !== pistas.length;
+      const filtrando = visibles.length !== fuente;
       resumen.textContent = `${plural(visibles.length, 'cancion', 'canciones')}` +
-        `${filtrando ? ` de ${pistas.length}` : ''} · ${formatoTiempo(total)}`;
+        `${filtrando ? ` de ${fuente}` : ''} · ${formatoTiempo(total)}`;
       cuerpo.dataset.vacio = String(visibles.length === 0);
+      // Distinguir "esta vista aun no tiene nada" de "la busqueda no
+      // encuentra nada" importa: el consejo util es distinto en cada caso.
+      cuerpo.dataset.fuenteVacia = String(fuente === 0);
       return;
     }
 
@@ -388,7 +461,7 @@ export function initShell(motor, ajustes = {}) {
       return;
     }
 
-    if (vista.tipo === 'canciones') pintarCanciones();
+    if (vista.tipo === 'canciones' || vista.tipo === 'favoritos' || vista.tipo === 'recientes') pintarCanciones();
     else if (vista.tipo === 'albumes') pintarRejillaAlbumes();
     else if (vista.tipo === 'artistas') pintarRejillaArtistas();
     else if (vista.tipo === 'album') pintarFichaAlbum();
@@ -399,7 +472,32 @@ export function initShell(motor, ajustes = {}) {
 
   function pintarCanciones() {
     cuerpo.dataset.modo = 'lista';
-    cuerpo.replaceChildren(lista.nodo, sinResultados());
+    // En Recientes manda el orden de escucha; ordenarlo por titulo lo
+    // convertiria en otra lista de canciones cualquiera.
+    if (vista.tipo === 'recientes') lista.setOrden('ninguno', 'asc');
+    else if (lista.orden.por === 'ninguno') lista.setOrden(ajustes.sortBy ?? 'title', ajustes.sortDir ?? 'asc');
+    lista.setPistas(fuenteDeLista());
+    lista.setActual(player.track?.id ?? null, player.playing);
+    cuerpo.replaceChildren(lista.nodo, sinResultados(), vacioDeVista());
+  }
+
+  /** Aviso propio de Favoritos y Recientes cuando aun no hay nada dentro. */
+  function vacioDeVista() {
+    if (vista.tipo === 'favoritos') {
+      return el('div', { class: 'vacio vacio--vista' }, [
+        el('div', { class: 'vacio__icono', texto: glifo('corazon') }),
+        el('h2', { class: 'vacio__titulo', texto: 'Sin favoritos todavia' }),
+        el('p', { class: 'vacio__texto', texto: 'Pulsa el corazon de una cancion, en la lista o abajo en el transporte, y aparecera aqui.' }),
+      ]);
+    }
+    if (vista.tipo === 'recientes') {
+      return el('div', { class: 'vacio vacio--vista' }, [
+        el('div', { class: 'vacio__icono', texto: glifo('reciente') }),
+        el('h2', { class: 'vacio__titulo', texto: 'Aun no has escuchado nada' }),
+        el('p', { class: 'vacio__texto', texto: 'Una cancion entra aqui cuando ha sonado de verdad, no al pasarla de largo.' }),
+      ]);
+    }
+    return null;
   }
 
   function pintarRejillaAlbumes() {

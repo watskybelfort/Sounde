@@ -18,11 +18,12 @@
 .lista__cabecera,
 .fila {
   display: grid;
-  grid-template-columns: 40px minmax(0, 2.4fr) minmax(0, 1.5fr) 64px;
+  grid-template-columns: 40px minmax(0, 2.4fr) minmax(0, 1.5fr) 30px 64px;
   align-items: center;
   gap: 12px;
   padding: 0 10px;
 }
+
 
 .lista__cabecera {
   position: sticky;
@@ -238,6 +239,35 @@
   text-align: right;
 }
 
+/* El corazon solo asoma al pasar por encima, salvo que ya este marcado: una
+   columna de corazones vacios en toda la biblioteca es ruido puro. */
+.fila__fav {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radio-full);
+  color: var(--texto-3);
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+.fila:hover .fila__fav,
+.fila__fav[data-marcado='true'],
+.fila__fav:focus-visible {
+  opacity: 1;
+}
+
+.fila__fav[data-marcado='true'] {
+  color: rgb(var(--acento));
+}
+
+.fila__fav:hover {
+  color: var(--texto);
+}
+
 /* --------------------------------------------------------- montaje en vista */
 
 /* Con la lista dentro, el que desplaza es su viewport, no el cuerpo: dos
@@ -254,7 +284,8 @@
   min-height: 0;
 }
 
-.vista__cuerpo[data-modo='lista'] .vacio--busqueda {
+.vista__cuerpo[data-modo='lista'] .vacio--busqueda,
+.vista__cuerpo[data-modo='lista'] .vacio--vista {
   display: none;
 }
 
@@ -262,7 +293,13 @@
   display: none;
 }
 
-.vista__cuerpo[data-modo='lista'][data-vacio='true'] .vacio--busqueda {
+/* "La busqueda no encuentra nada" y "esta vista aun no tiene nada" son dos
+   situaciones distintas y el consejo util es distinto en cada una. */
+.vista__cuerpo[data-modo='lista'][data-vacio='true'][data-fuente-vacia='false'] .vacio--busqueda {
+  display: flex;
+}
+
+.vista__cuerpo[data-modo='lista'][data-vacio='true'][data-fuente-vacia='true'] .vacio--vista {
   display: flex;
 }
 
@@ -270,7 +307,7 @@
 @container (max-width: 620px) {
   .lista__cabecera,
   .fila {
-    grid-template-columns: 40px minmax(0, 1fr) 64px;
+    grid-template-columns: 40px minmax(0, 1fr) 30px 64px;
   }
 
   .lista__col--album,

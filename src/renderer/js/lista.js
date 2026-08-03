@@ -27,6 +27,7 @@ export function crearLista(opciones = {}) {
     numerar = 'posicion',
     conAlbum = true,
     conArte = true,
+    onFavorito,
   } = opciones;
 
   let todas = [];
@@ -36,6 +37,7 @@ export function crearLista(opciones = {}) {
   let seleccion = -1;
   let orden = { por: 'title', dir: 'asc' };
   let filtro = '';
+  let favoritos = new Set();
   const pool = [];
 
   const filas = el('div', { class: 'lista__espacio' });
@@ -107,6 +109,9 @@ export function crearLista(opciones = {}) {
       el('div', { class: 'lista__col', texto: '#' }),
       cols[0],
       cols[1],
+      // Hueco de la columna de favorito. Sin el, cada titulo de columna se
+      // desplaza y deja de estar encima de lo que titula.
+      el('div'),
       cols[2],
     ]);
 
@@ -139,8 +144,13 @@ export function crearLista(opciones = {}) {
       ? todas.filter((t) => coincide(t, texto))
       : [...todas];
 
-    const signo = orden.dir === 'asc' ? 1 : -1;
-    visibles.sort((a, b) => signo * comparar(a, b, orden.por));
+    // 'ninguno' respeta el orden con el que llegan. Lo usan las vistas donde
+    // el orden ES la informacion, como lo escuchado hace poco: reordenarlo
+    // alfabeticamente lo convertiria en otra lista cualquiera.
+    if (orden.por !== 'ninguno') {
+      const signo = orden.dir === 'asc' ? 1 : -1;
+      visibles.sort((a, b) => signo * comparar(a, b, orden.por));
+    }
 
     seleccion = -1;
     viewport.scrollTop = 0;
@@ -184,6 +194,7 @@ export function crearLista(opciones = {}) {
     const artista = el('div', { class: 'fila__artista truncar' });
     const album = el('div', { class: 'fila__album truncar' });
     const duracion = el('div', { class: 'fila__duracion tabular' });
+    const favorito = el('button', { class: 'fila__fav' });
 
     const nodo = el('div', { class: 'fila', role: 'row' }, [
       el('div', { class: 'fila__num' }, [numero, play, ecualizador]),
@@ -192,10 +203,17 @@ export function crearLista(opciones = {}) {
         el('div', { class: 'fila__textos' }, [titulo, artista]),
       ]),
       album,
+      favorito,
       duracion,
     ]);
 
     let indiceActual = -1;
+
+    favorito.addEventListener('click', (e) => {
+      // Sin frenarlo, marcar un favorito selecciona ademas la fila.
+      e.stopPropagation();
+      onFavorito?.(visibles[indiceActual]);
+    });
 
     nodo.addEventListener('click', () => {
       seleccion = indiceActual;
@@ -226,6 +244,12 @@ export function crearLista(opciones = {}) {
           imagen.hidden = true;
           delete arte.dataset.conArte;
         }
+
+        const esFav = favoritos.has(track.id);
+        favorito.textContent = glifo(esFav ? 'corazonLleno' : 'corazon');
+        favorito.dataset.marcado = String(esFav);
+        favorito.title = esFav ? 'Quitar de favoritos' : 'Anadir a favoritos';
+        favorito.setAttribute('aria-label', `${esFav ? 'Quitar' : 'Anadir'} ${track.title} ${esFav ? 'de' : 'a'} favoritos`);
 
         nodo.dataset.id = track.id;
         nodo.dataset.activa = String(track.id === idActual);
@@ -261,7 +285,14 @@ export function crearLista(opciones = {}) {
       pintar();
     },
 
+    setFavoritos(ids) {
+      favoritos = ids instanceof Set ? ids : new Set(ids ?? []);
+      pintar();
+    },
+
     get visibles() { return visibles; },
+
+    get orden() { return { ...orden }; },
 
     destruir() {
       observador.disconnect();

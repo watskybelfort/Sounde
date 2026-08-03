@@ -15,6 +15,13 @@ import { Queue } from './queue.js';
  */
 const ESPERA_GUARDADO = 250;
 
+/**
+ * Cuando una pista cuenta como escuchada: a la mitad, o a los 30 segundos si
+ * es larga. Contarla al empezar convierte pasar diez canciones buscando una
+ * en diez escuchas falsas, y el historial deja de valer para nada.
+ */
+const SEGUNDOS_ESCUCHA = 30;
+
 export async function crearMotor(ajustes) {
   const { eqBands, eqPresets } = await window.sounde.app.constants();
 
@@ -34,6 +41,18 @@ export async function crearMotor(ajustes) {
   // Los cambios de ajustes de otra parte de la app (panel de ajustes, atajos)
   // llegan por aqui y el motor los adopta sin recargar nada.
   window.sounde.settings.onChange((patch) => player.aplicarAjustes(patch));
+
+  // --- Conteo de escuchas ---------------------------------------------------
+
+  let anotada = null;
+  player.on('trackchange', () => { anotada = null; });
+  player.on('time', ({ current, duration, track }) => {
+    if (!track || anotada === track.id) return;
+    const umbral = duration > 0 ? Math.min(SEGUNDOS_ESCUCHA, duration / 2) : SEGUNDOS_ESCUCHA;
+    if (current < umbral) return;
+    anotada = track.id;
+    window.sounde.collections.played(track.id);
+  });
 
   return {
     player,

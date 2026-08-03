@@ -251,7 +251,7 @@
 /* Dentro de un album sobra la columna de album: es la misma en todas. */
 .lista--sin-album .lista__cabecera,
 .lista--sin-album .fila {
-  grid-template-columns: 40px minmax(0, 1fr) 64px;
+  grid-template-columns: 40px minmax(0, 1fr) 30px 64px;
 }
 
 .lista--sin-album .fila__album {

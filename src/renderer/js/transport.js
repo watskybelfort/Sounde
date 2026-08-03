@@ -10,7 +10,7 @@
 import { $, glifo, pintarGlifo, formatoTiempo } from './dom.js';
 import { crearBarra } from './barra.js';
 
-export function initTransporte(motor) {
+export function initTransporte(motor, { favoritos } = {}) {
   const { player, queue } = motor;
 
   const arte = $('#ahora-arte');
@@ -25,6 +25,7 @@ export function initTransporte(motor) {
   const btnRepetir = $('#btn-repetir');
   const btnSilencio = $('#btn-silencio');
   const btnMini = $('#btn-mini');
+  const btnFavorito = $('#btn-favorito');
 
   const relojActual = $('#reloj-actual');
   const relojTotal = $('#reloj-total');
@@ -84,6 +85,17 @@ export function initTransporte(motor) {
     barraTiempo.setBuffer(0);
     relojActual.textContent = '0:00';
     relojTotal.textContent = formatoTiempo(hay ? track.duration : 0);
+  }
+
+  function pintarFavorito() {
+    const track = player.track;
+    const marcado = !!track && !!favoritos?.tiene(track.id);
+    btnFavorito.disabled = !track;
+    pintarGlifo(btnFavorito, marcado ? 'corazonLleno' : 'corazon');
+    btnFavorito.setAttribute('aria-pressed', String(marcado));
+    const etiqueta = marcado ? 'Quitar de favoritos' : 'Anadir a favoritos';
+    btnFavorito.title = etiqueta;
+    btnFavorito.setAttribute('aria-label', etiqueta);
   }
 
   function pintarEstado(sonando) {
@@ -181,7 +193,13 @@ export function initTransporte(motor) {
     else pararBucle();
   });
 
-  player.on('trackchange', ({ track }) => pintarPista(track));
+  btnFavorito.addEventListener('click', () => favoritos?.alternar(player.track?.id));
+  favoritos?.on('cambio', pintarFavorito);
+
+  player.on('trackchange', ({ track }) => {
+    pintarPista(track);
+    pintarFavorito();
+  });
   player.on('duration', () => pintarTiempo());
   player.on('time', () => {
     if (!bucle) pintarTiempo();
@@ -193,6 +211,7 @@ export function initTransporte(motor) {
   pintarEstado(false);
   pintarVolumen();
   pintarModos();
+  pintarFavorito();
 
-  return { pintarPista, pintarVolumen, pintarModos };
+  return { pintarPista, pintarVolumen, pintarModos, pintarFavorito };
 }

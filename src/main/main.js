@@ -11,6 +11,7 @@ const { registerIpc, paraCliente } = require('./ipc');
 const { registerSchemes, registerHandlers } = require('./protocols');
 const protocols = require('./protocols');
 const { Library } = require('./library');
+const { Collections } = require('./collections');
 
 const APP_URL = 'sounde://app/index.html';
 
@@ -27,6 +28,7 @@ if (!gotLock) {
 let mainWindow = null;
 let settings = null;
 let library = null;
+let collections = null;
 
 function main() {
   app.setAppUserModelId('com.mxrningstar.sounde');
@@ -62,7 +64,15 @@ function main() {
     for (const carpeta of settings.get('folders', [])) protocols.allowRoot(carpeta);
     for (const track of library.all()) protocols.allowFile(track.path);
 
-    registerIpc({ getWindow: () => mainWindow, settings, library });
+    // Almacen aparte del de la biblioteca: esta es la unica informacion que
+    // el usuario no puede recuperar reescaneando el disco.
+    const collectionsStore = new JsonStore(
+      path.join(app.getPath('userData'), 'collections.json'),
+      { version: 1, favorites: [], stats: {}, history: [], playlists: [] },
+    );
+    collections = new Collections(collectionsStore);
+
+    registerIpc({ getWindow: () => mainWindow, settings, library, collections });
 
     mainWindow = createMainWindow(settings);
     mainWindow.loadURL(APP_URL);
@@ -99,6 +109,7 @@ function main() {
 function cerrar() {
   if (settings) settings.save();
   if (library) library.persist();
+  if (collections) collections.store.save();
 }
 
 /**

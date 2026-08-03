@@ -71,6 +71,16 @@ contextBridge.exposeInMainWorld('sounde', {
     },
   },
 
+  // --- Favoritos e historial ----------------------------------------------
+  collections: {
+    all: () => ipcRenderer.invoke('coll:all'),
+    toggleFavorite: (id) => ipcRenderer.invoke('coll:toggle-favorite', id),
+    played: (id) => ipcRenderer.invoke('coll:played', id),
+    recent: (limite) => ipcRenderer.invoke('coll:recent', limite),
+    onChange: (h) => on('coll:changed', h),
+    onPlayed: (h) => on('coll:played', h),
+  },
+
   // --- App ----------------------------------------------------------------
   app: {
     info: () => ipcRenderer.invoke('app:info'),
