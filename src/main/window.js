@@ -159,6 +159,10 @@ function setMiniPlayer(win, enabled) {
     // estirarla en vertical solo reparte aire feo.
     win.setMaximumSize(4096, MINI_SIZE.height);
     win.setSize(MINI_SIZE.width, MINI_SIZE.height, true);
+    // Ojo al depurar esto: mientras haya un juego a pantalla completa en
+    // primer plano, Windows no deja TOPMOST a nadie mas y esta llamada no
+    // hace nada, sin dar error. La ventana sale bien y solo falla el flotar,
+    // que es justo lo que despista.
     win.setAlwaysOnTop(true, 'floating');
     win.setMaximizable(false);
   } else {
