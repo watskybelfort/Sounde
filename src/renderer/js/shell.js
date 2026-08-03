@@ -17,6 +17,7 @@ import {
 import { pistasDe } from './listas.js';
 import { abrirMenu } from './menu.js';
 import { pedirTexto, confirmar } from './dialogo.js';
+import { crearLetra } from './letra.js';
 
 const raiz = document.documentElement;
 
@@ -303,6 +304,13 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
     aplicarVista(historial.pop() ?? { tipo: base() });
   }
 
+  /** Quien quiera enterarse de los cambios de vista (el boton de la letra). */
+  const oyentesVista = [];
+  const onVista = (fn) => {
+    oyentesVista.push(fn);
+    return () => oyentesVista.splice(oyentesVista.indexOf(fn), 1);
+  };
+
   function aplicarVista(nueva) {
     vista = nueva;
     filtro = '';
@@ -310,6 +318,13 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
     lista.setFiltro('');
     if (TITULOS[nueva.tipo]) window.sounde.settings.set({ view: nueva.tipo });
     pintarCuerpo();
+    for (const fn of oyentesVista) {
+      try {
+        fn(vista);
+      } catch (err) {
+        console.warn('[shell] un oyente de vista fallo:', err.message);
+      }
+    }
     // Al entrar en Recientes se relee el historial: puede haber cambiado
     // desde la ultima vez sin que nadie tocara la biblioteca.
     if (nueva.tipo === 'recientes') {
@@ -324,8 +339,28 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
     if (v.tipo === 'album') return v.clave.titulo;
     if (v.tipo === 'artista') return v.clave.nombre;
     if (v.tipo === 'lista') return v.clave.name;
+    if (v.tipo === 'letra') return 'Letra';
     return TITULOS[v.tipo] ?? 'Canciones';
   }
+
+  // --- Letra ----------------------------------------------------------------
+
+  /**
+   * La letra NO esta en TITULOS a proposito: no es una seccion de la
+   * biblioteca. Se abre encima de donde estes y al volver sigues ahi, que es
+   * lo que quiere quien la abre a media escucha. Por lo mismo no se guarda
+   * como vista de arranque: reabrir la app en la letra de nada seria absurdo.
+   */
+  const letra = crearLetra({ player });
+
+  function alternarLetra() {
+    if (vista.tipo === 'letra') volver();
+    else abrir({ tipo: 'letra' });
+  }
+
+  player.on('trackchange', ({ track }) => {
+    if (vista.tipo === 'letra') letra.mostrar(track);
+  });
 
   /**
    * La seccion en la que se esta navegando, para marcar el lateral y titular
@@ -599,6 +634,12 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
     const cuenta = $('#cuenta-canciones');
     if (cuenta) cuenta.textContent = pistas.length ? String(pistas.length) : '';
 
+    if (vista.tipo === 'letra') {
+      const t = player.track;
+      resumen.textContent = t ? [t.title, t.artist].filter(Boolean).join(' · ') : 'Nada sonando';
+      return;
+    }
+
     if (!pistas.length) {
       resumen.textContent = 'Sin musica todavia';
       return;
@@ -638,8 +679,20 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
       boton.setAttribute('aria-current', String(tipo === base() && vista.tipo !== 'lista'));
     }
     pintarListas();
-    tituloVista.textContent = vista.tipo === 'lista' ? 'Listas' : TITULOS[base()];
-    acciones.dataset.ficha = String(enFicha || vista.tipo === 'lista');
+    tituloVista.textContent = vista.tipo === 'lista' ? 'Listas'
+      : vista.tipo === 'letra' ? 'Letra' : TITULOS[base()];
+    acciones.dataset.ficha = String(enFicha || vista.tipo === 'lista' || vista.tipo === 'letra');
+
+    letra.setVisible(vista.tipo === 'letra');
+    if (vista.tipo === 'letra') {
+      // Antes del corte por biblioteca vacia: una cancion abierta con "Abrir
+      // con..." no esta en la lista y su letra se puede leer igual.
+      cuerpo.dataset.modo = 'letra';
+      cuerpo.replaceChildren(letra.nodo);
+      letra.mostrar(player.track);
+      pintarResumen();
+      return;
+    }
 
     if (!pistas.length) {
       cuerpo.dataset.modo = 'vacio';
@@ -806,7 +859,11 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
     ]);
   }
 
-  return { refrescar, ir, lista, get pistas() { return pistas; } };
+  return {
+    refrescar, ir, alternarLetra, onVista, lista,
+    get pistas() { return pistas; },
+    get vista() { return vista; },
+  };
 }
 
 /** Un arrastre de texto dentro de la app no debe encender la capa. */

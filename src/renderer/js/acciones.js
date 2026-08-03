@@ -169,6 +169,16 @@ export function crearAcciones(ctx) {
       ejecutar: () => shell.ir({ tipo: 'recientes' }),
     },
 
+    {
+      id: 'letra',
+      texto: 'Ver la letra',
+      icono: 'letra',
+      grupo: 'Ir a',
+      tecla: { key: 'l', ctrl: true },
+      atajo: 'Ctrl + L',
+      ejecutar: () => shell.alternarLetra(),
+    },
+
     // --- Ventana ------------------------------------------------------------
     {
       id: 'buscar',

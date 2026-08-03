@@ -413,6 +413,15 @@
   padding: 0 20px 20px;
 }
 
+/* La letra lleva su propio desplazamiento, con su relleno de media pantalla
+   arriba y abajo para poder centrar la primera linea y la ultima. Con dos
+   contenedores desplazables anidados, scrollIntoView mueve el de fuera y la
+   linea activa se va del centro. */
+.vista__cuerpo[data-modo='letra'] {
+  overflow: hidden;
+  padding: 0;
+}
+
 /* Buscador */
 
 .buscador {

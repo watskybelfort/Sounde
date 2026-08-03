@@ -45,6 +45,7 @@ async function boot() {
   const cola = engancharCola(motor, ajustes);
   engancharPaleta(motor, ajustes);
   engancharVisualizador(motor, ajustes);
+  engancharLetra(shell);
   initBarraTareas(motor);
   const sesion = initSesionMedios(motor, { activo: ajustes.mediaKeys !== false });
   window.sounde.settings.onChange((patch) => {
@@ -98,6 +99,23 @@ function engancharVisualizador(motor, ajustes) {
   });
 
   return visual;
+}
+
+function engancharLetra(shell) {
+  const boton = $('#btn-letra');
+  pintarGlifo(boton, 'letra');
+
+  // El boton se marca cuando la vista esta abierta, y a la letra se llega
+  // tambien por Ctrl+L, por la paleta o saliendo con el boton de volver: se
+  // escucha al shell en vez de llevar aqui una bandera, que es justo lo que
+  // acaba diciendo una cosa mientras la pantalla enseña otra.
+  const pintar = (vista) => {
+    boton.setAttribute('aria-pressed', String(vista?.tipo === 'letra'));
+  };
+
+  boton.addEventListener('click', () => shell.alternarLetra());
+  shell.onVista(pintar);
+  pintar(shell.vista);
 }
 
 function engancharPaleta(motor, ajustes) {

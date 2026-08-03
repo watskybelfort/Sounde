@@ -10,6 +10,7 @@ const m3u = require('./m3u');
 const taskbar = require('./taskbar');
 const notificaciones = require('./notificaciones');
 const bandeja = require('./bandeja');
+const letras = require('./letras');
 
 /**
  * Registra los handlers del proceso principal.
@@ -296,6 +297,19 @@ function registerIpc(ctx) {
     emitir('library:changed', { total: library.size() });
     return creadas;
   }));
+
+  // --- Letras ---------------------------------------------------------------
+  ipcMain.handle('lyrics:for', async (_e, id) => {
+    const track = id ? library.get(id) : null;
+    if (!track) return null;
+    return letras.buscar(track);
+  });
+
+  // Volver a escanear puede haber traido un .lrc que antes no estaba.
+  ipcMain.handle('lyrics:forget', (_e, id) => {
+    letras.olvidar(id);
+    return true;
+  });
 
   // --- Varios -------------------------------------------------------------
   ipcMain.handle('app:info', () => ({

@@ -103,6 +103,12 @@ contextBridge.exposeInMainWorld('sounde', {
     onChange: (h) => on('coll:playlists', h),
   },
 
+  // --- Letras ---------------------------------------------------------------
+  lyrics: {
+    para: (id) => ipcRenderer.invoke('lyrics:for', id),
+    olvidar: (id) => ipcRenderer.invoke('lyrics:forget', id),
+  },
+
   // --- App ----------------------------------------------------------------
   app: {
     info: () => ipcRenderer.invoke('app:info'),

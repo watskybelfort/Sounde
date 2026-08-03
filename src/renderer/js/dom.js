@@ -50,6 +50,8 @@ export const ICONO = {
   vaciar: 0xe74d,
   asa: 0xe76f,
   ajustes: 0xe713,
+  letra: 0xe8a5,
+  temporizador: 0xe916,
   aPantalla: 0xe740,
   aVentana: 0xe73f,
   descargar: 0xe896,

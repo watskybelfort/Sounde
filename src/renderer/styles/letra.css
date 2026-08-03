@@ -1,0 +1,89 @@
+/* ============================================================================
+ * SOUNDE · LETRA
+ * Columna centrada, la linea que suena destacada.
+ * ==========================================================================*/
+
+.letra {
+  display: flex;
+  justify-content: center;
+  min-height: 0;
+  height: 100%;
+}
+
+.letra__lineas {
+  width: 100%;
+  max-width: 620px;
+  height: 100%;
+  overflow-y: auto;
+  padding: 0 20px;
+  /*
+   * Media pantalla de aire arriba y abajo.
+   *
+   * Sin esto, la primera linea no puede centrarse (no hay nada por encima que
+   * empujarla) y la ultima tampoco: el seguimiento se queda pegado al borde
+   * justo en el estribillo final, que es cuando mas se mira.
+   */
+  padding-block: 42vh;
+  scrollbar-width: thin;
+  scrollbar-color: var(--realce-borde-fuerte) transparent;
+}
+
+.letra__linea {
+  margin: 0;
+  padding: 7px 12px;
+  border-radius: var(--radio-1);
+  font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.34;
+  color: var(--texto-3);
+  transition: color var(--dur-2) var(--ease-out), opacity var(--dur-2) var(--ease-out);
+}
+
+/* Las lineas sin tiempo, sin marcar, no se pueden pulsar. */
+.letra[data-sincronizada='true'] .letra__linea:not([data-vacia='true']) {
+  cursor: pointer;
+}
+
+.letra[data-sincronizada='true'] .letra__linea:not([data-vacia='true']):hover {
+  background: var(--hover);
+  color: var(--texto-2);
+}
+
+/* Un silencio del LRC: guarda su hueco sin ocupar una linea entera. */
+.letra__linea[data-vacia='true'] {
+  height: 10px;
+  padding: 0;
+}
+
+.letra__linea[data-activa='true'] {
+  color: var(--texto);
+}
+
+/*
+ * Solo se atenua lo que YA paso. Lo que viene se deja legible, que es lo que
+ * se esta leyendo: atenuar por igual antes y despues deja la vista con una
+ * sola linea nitida y el resto en gris, y no hay forma de ir por delante.
+ */
+.letra[data-sincronizada='true'] .letra__linea {
+  opacity: 0.62;
+}
+
+.letra[data-sincronizada='true'] .letra__linea[data-activa='true'] {
+  opacity: 1;
+}
+
+.letra[data-sincronizada='true'] .letra__linea[data-activa='true'] ~ .letra__linea {
+  opacity: 0.86;
+}
+
+/* Sin tiempos no hay nada que resaltar: texto tranquilo y a leer. */
+.letra[data-sincronizada='false'] .letra__linea {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--texto-2);
+}
+
+.letra .vacio--vista {
+  margin-top: -30vh;
+}
