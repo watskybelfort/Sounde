@@ -129,8 +129,55 @@ export function fichaArtista(artista, { onVolver, volverA = 'Artistas', onReprod
   ]);
 }
 
-function cabeceraFicha({ tipo, titulo, meta, artUrl, onReproducir, onAleatorio }) {
+export function fichaLista(lista, pistas, {
+  onVolver, volverA = 'Canciones', onReproducir, onAleatorio, onMenu, listaNodo,
+}) {
+  const duracion = pistas.reduce((s, t) => s + (t.duration || 0), 0);
+  return el('div', { class: 'detalle detalle--lista' }, [
+    botonVolver(volverA, onVolver),
+    cabeceraFicha({
+      tipo: 'Lista',
+      titulo: lista.name,
+      arte: mosaico(pistas),
+      meta: pistas.length
+        ? `${plural(pistas.length, 'cancion', 'canciones')} · ${formatoTiempo(duracion)}`
+        : 'Vacia por ahora',
+      onReproducir,
+      onAleatorio,
+      onMenu,
+    }),
+    el('div', { class: 'detalle__cuerpo' }, [listaNodo]),
+  ]);
+}
+
+/**
+ * Portada de una lista: mosaico de cuatro caratulas distintas, o la unica que
+ * haya. Repetir la misma cuatro veces no aporta nada y con una sola imagen
+ * estirada la lista parece un album, que es justo lo que no es.
+ */
+function mosaico(pistas) {
+  const urls = [];
+  const vistos = new Set();
+  for (const t of pistas) {
+    if (!t.artUrl || vistos.has(t.artUrl)) continue;
+    vistos.add(t.artUrl);
+    urls.push(t.artUrl);
+    if (urls.length === 4) break;
+  }
+
+  if (urls.length >= 4) {
+    return el('div', { class: 'detalle__arte detalle__arte--mosaico' },
+      urls.map((u) => el('img', { src: u, alt: '' })));
+  }
   const arte = el('div', { class: 'detalle__arte' }, [
+    urls[0] ? el('img', { src: urls[0], alt: '' }) : null,
+  ]);
+  if (!urls[0]) arte.dataset.vacia = 'true';
+  return arte;
+}
+
+function cabeceraFicha({ tipo, titulo, meta, artUrl, arte: arteDada, onReproducir, onAleatorio, onMenu }) {
+  const arte = arteDada ?? el('div', { class: 'detalle__arte' }, [
     artUrl ? el('img', { src: artUrl, alt: '' }) : null,
   ]);
 
@@ -149,6 +196,15 @@ function cabeceraFicha({ tipo, titulo, meta, artUrl, onReproducir, onAleatorio }
           el('span', { class: 'boton__icono', texto: glifo('aleatorio') }),
           el('span', { texto: 'Aleatorio' }),
         ]),
+        onMenu
+          ? el('button', {
+            class: 'icono-btn',
+            texto: glifo('mas'),
+            title: 'Mas opciones',
+            'aria-label': 'Mas opciones',
+            onClick: (e) => onMenu(e),
+          })
+          : null,
       ]),
     ]),
   ]);

@@ -1,0 +1,89 @@
+/* ============================================================================
+ * SOUNDE · MENU CONTEXTUAL
+ * ==========================================================================*/
+
+.menu {
+  position: fixed;
+  left: var(--x, 0);
+  top: var(--y, 0);
+  z-index: 200;
+  min-width: 208px;
+  max-width: 320px;
+  padding: 5px;
+  border-radius: var(--radio-2);
+  animation: menu-entra var(--dur-1) var(--ease-out);
+}
+
+@keyframes menu-entra {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radio-1);
+  color: var(--texto);
+  font-size: 12.5px;
+  text-align: left;
+  transition: background var(--dur-1) var(--ease-out);
+}
+
+.menu__item:hover,
+.menu__item:focus-visible {
+  background: var(--hover);
+  outline: none;
+}
+
+.menu__item[data-activo='true'] {
+  color: rgb(var(--acento));
+}
+
+.menu__item--peligro:hover {
+  background: rgb(196 43 28 / 0.22);
+}
+
+.menu__icono {
+  flex: 0 0 auto;
+  width: 16px;
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 13px;
+  line-height: 1;
+  text-align: center;
+  color: var(--texto-2);
+}
+
+.menu__texto {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu__flecha,
+.menu__atajo {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--texto-3);
+  font-size: 10px;
+}
+
+.menu__flecha {
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 9px;
+}
+
+.menu__separador {
+  height: 1px;
+  margin: 5px 8px;
+  background: var(--realce-borde);
+}
+
+/* Un submenu con muchas listas tiene que poder desplazarse en vez de
+   salirse por debajo de la ventana. */
+.menu--sub {
+  max-height: 60vh;
+  overflow-y: auto;
+}

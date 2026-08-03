@@ -1,0 +1,88 @@
+/* ============================================================================
+ * SOUNDE · DIALOGOS
+ * ==========================================================================*/
+
+.dialogo-capa {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  /* Oscurecer el fondo, no difuminarlo: la ventana entera ya es vidrio y
+     otro desenfoque encima la convierte en una mancha. */
+  background: rgb(0 0 0 / 0.42);
+  animation: dialogo-fondo var(--dur-2) var(--ease-out);
+}
+
+@keyframes dialogo-fondo {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dialogo {
+  width: min(420px, calc(100vw - 48px));
+  padding: 22px;
+  animation: dialogo-entra var(--dur-2) var(--ease-out);
+}
+
+@keyframes dialogo-entra {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+.dialogo__titulo {
+  font-size: 17px;
+  margin-bottom: 12px;
+}
+
+.dialogo__cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dialogo__etiqueta {
+  font-size: 12px;
+  color: var(--texto-3);
+}
+
+.dialogo__texto {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--texto-2);
+}
+
+.dialogo__campo {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--realce-borde);
+  border-radius: var(--radio-1);
+  background: rgb(0 0 0 / 0.28);
+  font-size: 13px;
+  user-select: text;
+  cursor: text;
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+
+.dialogo__campo:focus {
+  border-color: rgb(var(--acento) / 0.8);
+}
+
+.dialogo__acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.boton--peligro {
+  background: #c42b1c;
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+}
+
+.boton--peligro:hover {
+  background: #d13a2a;
+}

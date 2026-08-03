@@ -148,6 +148,24 @@
   object-fit: cover;
 }
 
+.detalle__arte--mosaico {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 0;
+}
+
+.detalle__arte[data-vacia='true']::after {
+  content: '\E90B';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--texto-3);
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 44px;
+}
+
 .detalle--artista .detalle__arte {
   border-radius: var(--radio-full);
 }

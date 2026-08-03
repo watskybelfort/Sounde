@@ -168,6 +168,35 @@ function registerIpc(ctx) {
 
   ipcMain.handle('coll:recent', (_e, limite) => collections.recentIds(limite));
 
+  // --- Listas de reproduccion ---------------------------------------------
+  const conListas = (fn) => (...args) => {
+    const salida = fn(...args);
+    emitir('coll:playlists', { playlists: collections.playlists });
+    return salida;
+  };
+
+  ipcMain.handle('pl:all', () => collections.playlists);
+
+  ipcMain.handle('pl:create', conListas((_e, name, trackIds) =>
+    collections.createPlaylist(name, trackIds)));
+
+  ipcMain.handle('pl:rename', conListas((_e, id, name) =>
+    collections.renamePlaylist(id, name)));
+
+  ipcMain.handle('pl:remove', conListas((_e, id) => collections.removePlaylist(id)));
+
+  ipcMain.handle('pl:add', conListas((_e, id, trackIds) =>
+    collections.addToPlaylist(id, trackIds)));
+
+  ipcMain.handle('pl:remove-at', conListas((_e, id, indice) =>
+    collections.removeFromPlaylist(id, indice)));
+
+  ipcMain.handle('pl:move', conListas((_e, id, desde, hasta) =>
+    collections.movePlaylistTrack(id, desde, hasta)));
+
+  ipcMain.handle('pl:set-tracks', conListas((_e, id, trackIds) =>
+    collections.setPlaylistTracks(id, trackIds)));
+
   // --- Varios -------------------------------------------------------------
   ipcMain.handle('app:info', () => ({
     version: app.getVersion(),

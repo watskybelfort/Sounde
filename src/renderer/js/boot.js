@@ -10,6 +10,7 @@ import { crearCola } from './cola.js';
 import { crearPaleta } from './paleta.js';
 import { crearVisualizador } from './visualizador.js';
 import { crearFavoritos } from './favoritos.js';
+import { crearListas } from './listas.js';
 import { $, pintarGlifo } from './dom.js';
 
 const raiz = document.documentElement;
@@ -33,7 +34,8 @@ async function boot() {
 
   const motor = await crearMotor(ajustes);
   const favoritos = await crearFavoritos();
-  const shell = initShell(motor, ajustes, { favoritos });
+  const listas = await crearListas();
+  const shell = initShell(motor, ajustes, { favoritos, listas });
   initTransporte(motor, { favoritos });
   engancharCola(motor, ajustes);
   engancharPaleta(motor, ajustes);

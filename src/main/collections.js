@@ -99,6 +99,89 @@ class Collections {
     return salida;
   }
 
+  // --- Listas de reproduccion -----------------------------------------------
+
+  /**
+   * Una lista guarda ids, no rutas ni pistas enteras. Guardando la pista
+   * completa, editar sus etiquetas dejaria la lista mostrando los datos
+   * viejos para siempre.
+   */
+  createPlaylist(name, trackIds = []) {
+    const lista = {
+      id: nuevoId(),
+      name: nombreLibre(this.playlists, name),
+      tracks: [...new Set(asArray(trackIds))],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    this.playlists.push(lista);
+    this.persist();
+    return lista;
+  }
+
+  renamePlaylist(id, name) {
+    const lista = this.findPlaylist(id);
+    if (!lista) return null;
+    lista.name = nombreLibre(this.playlists.filter((p) => p.id !== id), name);
+    lista.updatedAt = Date.now();
+    this.persist();
+    return lista;
+  }
+
+  removePlaylist(id) {
+    const antes = this.playlists.length;
+    this.playlists = this.playlists.filter((p) => p.id !== id);
+    if (this.playlists.length !== antes) this.persist();
+    return antes !== this.playlists.length;
+  }
+
+  findPlaylist(id) {
+    return this.playlists.find((p) => p.id === id) ?? null;
+  }
+
+  addToPlaylist(id, trackIds) {
+    const lista = this.findPlaylist(id);
+    if (!lista) return null;
+    // Sin filtrar repetidos, arrastrar el mismo album dos veces deja la lista
+    // con todo duplicado y sin forma comoda de limpiarlo.
+    const ya = new Set(lista.tracks);
+    const nuevos = asArray(trackIds).filter((t) => t && !ya.has(t));
+    lista.tracks.push(...nuevos);
+    lista.updatedAt = Date.now();
+    this.persist();
+    return { lista, anadidas: nuevos.length, repetidas: asArray(trackIds).length - nuevos.length };
+  }
+
+  removeFromPlaylist(id, indice) {
+    const lista = this.findPlaylist(id);
+    if (!lista || indice < 0 || indice >= lista.tracks.length) return null;
+    lista.tracks.splice(indice, 1);
+    lista.updatedAt = Date.now();
+    this.persist();
+    return lista;
+  }
+
+  movePlaylistTrack(id, desde, hasta) {
+    const lista = this.findPlaylist(id);
+    if (!lista) return null;
+    if (desde < 0 || desde >= lista.tracks.length) return lista;
+    const destino = Math.max(0, Math.min(hasta, lista.tracks.length - 1));
+    const [pieza] = lista.tracks.splice(desde, 1);
+    lista.tracks.splice(destino, 0, pieza);
+    lista.updatedAt = Date.now();
+    this.persist();
+    return lista;
+  }
+
+  setPlaylistTracks(id, trackIds) {
+    const lista = this.findPlaylist(id);
+    if (!lista) return null;
+    lista.tracks = [...new Set(asArray(trackIds))];
+    lista.updatedAt = Date.now();
+    this.persist();
+    return lista;
+  }
+
   // --- Serializacion --------------------------------------------------------
 
   all() {
@@ -143,6 +226,25 @@ class Collections {
 
 function asArray(v) {
   return Array.isArray(v) ? v : [];
+}
+
+function nuevoId() {
+  return require('node:crypto').randomUUID();
+}
+
+/**
+ * Dos listas con el mismo nombre son indistinguibles en el lateral y una de
+ * las dos se vuelve imposible de encontrar. Se numera la repetida.
+ */
+function nombreLibre(listas, propuesto) {
+  const base = String(propuesto ?? '').trim() || 'Lista nueva';
+  const usados = new Set(listas.map((p) => p.name.toLowerCase()));
+  if (!usados.has(base.toLowerCase())) return base;
+  for (let n = 2; n < 999; n++) {
+    const intento = `${base} ${n}`;
+    if (!usados.has(intento.toLowerCase())) return intento;
+  }
+  return `${base} ${Date.now()}`;
 }
 
 module.exports = { Collections };

@@ -12,8 +12,11 @@ import { $, el, glifo, pintarGlifo, plural, formatoTiempo } from './dom.js';
 import { crearLista } from './lista.js';
 import { agruparAlbumes, agruparArtistas } from './agrupar.js';
 import {
-  rejilla, tarjetaAlbum, tarjetaArtista, fichaAlbum, fichaArtista,
+  rejilla, tarjetaAlbum, tarjetaArtista, fichaAlbum, fichaArtista, fichaLista,
 } from './vistas.js';
+import { pistasDe } from './listas.js';
+import { abrirMenu } from './menu.js';
+import { pedirTexto, confirmar } from './dialogo.js';
 
 const raiz = document.documentElement;
 
@@ -25,7 +28,7 @@ const TITULOS = {
   recientes: 'Recientes',
 };
 
-export function initShell(motor, ajustes = {}, { favoritos } = {}) {
+export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
   const { queue, player } = motor;
 
   const cuerpo = $('#vista-cuerpo');
@@ -66,6 +69,13 @@ export function initShell(motor, ajustes = {}, { favoritos } = {}) {
   const lista = crearLista({
     onReproducir: reproducirDesde,
     onFavorito: alternarFavorito,
+    onMenu: menuDePista,
+    // Reordenar solo tiene sentido en una lista propia; en la biblioteca el
+    // orden lo decide la columna por la que se ordena.
+    onMover: (desde, hasta) => {
+      if (vista.tipo !== 'lista') return;
+      listas?.mover(vista.clave.id, desde, hasta);
+    },
     onOrden: ({ por, dir }) => {
       // El orden solo se guarda desde Canciones. En Recientes o Favoritos el
       // orden es de la vista, no del gusto del usuario para la biblioteca.
@@ -80,6 +90,7 @@ export function initShell(motor, ajustes = {}, { favoritos } = {}) {
   const listaAlbum = crearLista({
     onReproducir: reproducirDesde,
     onFavorito: alternarFavorito,
+    onMenu: menuDePista,
     conCabecera: false,
     conAlbum: false,
     conArte: false,
@@ -103,6 +114,124 @@ export function initShell(motor, ajustes = {}, { favoritos } = {}) {
     // Quitar un favorito estando en la vista de Favoritos tiene que sacarlo
     // de la lista en el momento, no a la siguiente visita.
     if (vista.tipo === 'favoritos') pintarCuerpo();
+  });
+
+  // --- Menu contextual de pista ---------------------------------------------
+
+  function menuDePista(track, _indice, evento) {
+    if (!track) return;
+    const esFav = !!favoritos?.tiene(track.id);
+    const album = albumes.find((a) => a.pistas.some((t) => t.id === track.id));
+    const artista = artistas.find((a) => a.nombre === (track.albumArtist || track.artist));
+
+    abrirMenu([
+      { texto: 'Reproducir', icono: 'reproducir', onClick: () => reproducirDesde(track, 0, lista.visibles) },
+      { texto: 'Reproducir a continuacion', icono: 'siguiente', onClick: () => queue.addNext([track]) },
+      { texto: 'Anadir a la cola', icono: 'cola', onClick: () => queue.addLast([track]) },
+      { separador: true },
+      {
+        texto: esFav ? 'Quitar de favoritos' : 'Anadir a favoritos',
+        icono: esFav ? 'corazonLleno' : 'corazon',
+        activo: esFav,
+        onClick: () => favoritos?.alternar(track.id),
+      },
+      { texto: 'Anadir a una lista', icono: 'lista', submenu: () => submenuListas([track.id]) },
+      vista.tipo === 'lista'
+        ? {
+          texto: 'Quitar de esta lista',
+          icono: 'quitar',
+          // El indice real es el de la lista guardada, no el de la fila: con
+          // un filtro puesto no coinciden y se borraria otra cancion.
+          onClick: () => listas?.quitarEn(vista.clave.id, vista.clave.tracks.indexOf(track.id)),
+        }
+        : null,
+      { separador: true },
+      album ? { texto: 'Ir al album', icono: 'album', onClick: () => abrir({ tipo: 'album', clave: album }) } : null,
+      artista ? { texto: 'Ir al artista', icono: 'artista', onClick: () => abrir({ tipo: 'artista', clave: artista }) } : null,
+      { texto: 'Abrir la ubicacion', icono: 'carpeta', onClick: () => window.sounde.library.reveal(track.path) },
+    ], { x: evento.clientX, y: evento.clientY });
+  }
+
+  function submenuListas(ids) {
+    const propias = listas?.listas ?? [];
+    return [
+      {
+        texto: 'Lista nueva…',
+        icono: 'anadir',
+        onClick: async () => {
+          const nombre = await pedirTexto({
+            titulo: 'Nueva lista',
+            etiqueta: 'Nombre de la lista',
+            valor: 'Lista nueva',
+            aceptar: 'Crear',
+          });
+          if (nombre) await listas?.crear(nombre, ids);
+        },
+      },
+      propias.length ? { separador: true } : null,
+      ...propias.map((p) => ({
+        texto: p.name,
+        icono: 'lista',
+        onClick: () => listas?.anadir(p.id, ids),
+      })),
+    ].filter(Boolean);
+  }
+
+  function menuDeLista(playlist, evento) {
+    abrirMenu([
+      {
+        texto: 'Renombrar',
+        icono: 'renombrar',
+        onClick: async () => {
+          const nombre = await pedirTexto({
+            titulo: 'Renombrar la lista',
+            etiqueta: 'Nombre',
+            valor: playlist.name,
+          });
+          if (nombre) await listas?.renombrar(playlist.id, nombre);
+        },
+      },
+      { separador: true },
+      {
+        texto: 'Borrar la lista',
+        icono: 'papelera',
+        peligro: true,
+        onClick: async () => {
+          const seguro = await confirmar({
+            titulo: `Borrar "${playlist.name}"`,
+            texto: 'La lista desaparece. Las canciones siguen en la biblioteca.',
+            aceptar: 'Borrar',
+            peligro: true,
+          });
+          if (!seguro) return;
+          await listas?.borrar(playlist.id);
+          ir({ tipo: 'canciones' });
+        },
+      },
+    ], { x: evento.clientX, y: evento.clientY });
+  }
+
+  $('#btn-nueva-lista').addEventListener('click', async () => {
+    const nombre = await pedirTexto({
+      titulo: 'Nueva lista',
+      etiqueta: 'Nombre de la lista',
+      valor: 'Lista nueva',
+      aceptar: 'Crear',
+    });
+    if (nombre) await listas?.crear(nombre, []);
+  });
+
+  listas?.on('cambio', () => {
+    pintarListas();
+    // Si la lista abierta acaba de cambiar, hay que repintarla con lo nuevo.
+    if (vista.tipo === 'lista') {
+      const viva = listas.buscar(vista.clave.id);
+      if (!viva) ir({ tipo: 'canciones' });
+      else {
+        vista = { tipo: 'lista', clave: viva };
+        pintarCuerpo();
+      }
+    }
   });
 
   // --- Navegacion -----------------------------------------------------------
@@ -159,10 +288,11 @@ export function initShell(motor, ajustes = {}, { favoritos } = {}) {
   }
 
   function etiquetaDe(v) {
-    if (!v) return TITULOS[base()];
+    if (!v) return TITULOS[base()] ?? 'Canciones';
     if (v.tipo === 'album') return v.clave.titulo;
     if (v.tipo === 'artista') return v.clave.nombre;
-    return TITULOS[v.tipo];
+    if (v.tipo === 'lista') return v.clave.name;
+    return TITULOS[v.tipo] ?? 'Canciones';
   }
 
   /**
@@ -238,7 +368,7 @@ export function initShell(motor, ajustes = {}, { favoritos } = {}) {
 
   /** Las pistas de la vista actual, respetando el filtro. */
   function loQueSeVe() {
-    if (vista.tipo === 'canciones' || vista.tipo === 'favoritos' || vista.tipo === 'recientes') {
+    if (['canciones', 'favoritos', 'recientes', 'lista'].includes(vista.tipo)) {
       return lista.visibles;
     }
     if (vista.tipo === 'albumes') return albumesFiltrados().flatMap((a) => a.pistas);
@@ -354,6 +484,29 @@ export function initShell(motor, ajustes = {}, { favoritos } = {}) {
     if (vista.tipo === 'recientes') pintarCuerpo();
   });
 
+  function pintarListas() {
+    const cont = $('#lista-listas');
+    if (!cont) return;
+    const propias = listas?.listas ?? [];
+    cont.replaceChildren(...propias.map((p) => {
+      const boton = el('button', {
+        class: 'lateral__item',
+        title: p.name,
+        'aria-current': String(vista.tipo === 'lista' && vista.clave?.id === p.id),
+        onClick: () => ir({ tipo: 'lista', clave: p }),
+        onContextmenu: (e) => {
+          e.preventDefault();
+          menuDeLista(p, e);
+        },
+      }, [
+        el('span', { class: 'lateral__icono', texto: glifo('lista') }),
+        el('span', { class: 'lateral__texto', texto: p.name }),
+        el('span', { class: 'lateral__cuenta tabular', texto: p.tracks.length ? String(p.tracks.length) : '' }),
+      ]);
+      return boton;
+    }));
+  }
+
   function pintarCuentaFavoritos() {
     const cuenta = $('#cuenta-favoritos');
     if (!cuenta) return;
@@ -365,6 +518,7 @@ export function initShell(motor, ajustes = {}, { favoritos } = {}) {
   function fuenteDeLista() {
     if (vista.tipo === 'favoritos') return pistas.filter((t) => favoritos?.tiene(t.id));
     if (vista.tipo === 'recientes') return recientes;
+    if (vista.tipo === 'lista') return pistasDe(vista.clave, new Map(pistas.map((t) => [t.id, t])));
     return pistas;
   }
 
@@ -449,10 +603,11 @@ export function initShell(motor, ajustes = {}, { favoritos } = {}) {
     const enFicha = vista.tipo === 'album' || vista.tipo === 'artista';
 
     for (const [tipo, boton] of Object.entries(navs)) {
-      boton.setAttribute('aria-current', String(tipo === base()));
+      boton.setAttribute('aria-current', String(tipo === base() && vista.tipo !== 'lista'));
     }
-    tituloVista.textContent = TITULOS[base()];
-    acciones.dataset.ficha = String(enFicha);
+    pintarListas();
+    tituloVista.textContent = vista.tipo === 'lista' ? 'Listas' : TITULOS[base()];
+    acciones.dataset.ficha = String(enFicha || vista.tipo === 'lista');
 
     if (!pistas.length) {
       cuerpo.dataset.modo = 'vacio';
@@ -465,6 +620,7 @@ export function initShell(motor, ajustes = {}, { favoritos } = {}) {
     else if (vista.tipo === 'albumes') pintarRejillaAlbumes();
     else if (vista.tipo === 'artistas') pintarRejillaArtistas();
     else if (vista.tipo === 'album') pintarFichaAlbum();
+    else if (vista.tipo === 'lista') pintarFichaLista();
     else pintarFichaArtista();
 
     pintarResumen();
@@ -539,6 +695,24 @@ export function initShell(motor, ajustes = {}, { favoritos } = {}) {
       onReproducir: () => reproducir(album.pistas, false),
       onAleatorio: () => reproducir(album.pistas, true),
       listaNodo: listaAlbum.nodo,
+    }));
+  }
+
+  function pintarFichaLista() {
+    const playlist = vista.clave;
+    const suyas = fuenteDeLista();
+    cuerpo.dataset.modo = 'detalle';
+    // Aqui SI se reordena a mano, asi que la lista no se ordena sola.
+    lista.setOrden('ninguno', 'asc');
+    lista.setPistas(suyas);
+    lista.setActual(player.track?.id ?? null, player.playing);
+    cuerpo.replaceChildren(fichaLista(playlist, suyas, {
+      onVolver: volver,
+      volverA: etiquetaDe(historial[historial.length - 1]),
+      onReproducir: () => reproducir(suyas, false),
+      onAleatorio: () => reproducir(suyas, true),
+      onMenu: (e) => menuDeLista(playlist, e),
+      listaNodo: lista.nodo,
     }));
   }
 

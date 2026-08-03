@@ -20,6 +20,8 @@
   <link rel="stylesheet" href="styles/lista.css">
   <link rel="stylesheet" href="styles/vistas.css">
   <link rel="stylesheet" href="styles/cola.css">
+  <link rel="stylesheet" href="styles/menu.css">
+  <link rel="stylesheet" href="styles/dialogo.css">
   <link rel="stylesheet" href="styles/titlebar.css">
   <link rel="stylesheet" href="styles/transport.css">
 </head>
@@ -78,6 +80,14 @@
         <span class="lateral__icono" id="icono-recientes" aria-hidden="true"></span>
         <span class="lateral__texto">Recientes</span>
       </button>
+    </div>
+
+    <div class="lateral__grupo lateral__grupo--listas">
+      <span class="lateral__titulo">
+        Listas
+        <button class="lateral__accion" id="btn-nueva-lista" title="Nueva lista" aria-label="Nueva lista"></button>
+      </span>
+      <div class="lateral__listas" id="lista-listas"></div>
     </div>
 
     <div class="lateral__grupo">

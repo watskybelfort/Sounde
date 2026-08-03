@@ -81,6 +81,19 @@ contextBridge.exposeInMainWorld('sounde', {
     onPlayed: (h) => on('coll:played', h),
   },
 
+  // --- Listas de reproduccion ---------------------------------------------
+  playlists: {
+    all: () => ipcRenderer.invoke('pl:all'),
+    create: (name, trackIds) => ipcRenderer.invoke('pl:create', name, trackIds),
+    rename: (id, name) => ipcRenderer.invoke('pl:rename', id, name),
+    remove: (id) => ipcRenderer.invoke('pl:remove', id),
+    add: (id, trackIds) => ipcRenderer.invoke('pl:add', id, trackIds),
+    removeAt: (id, indice) => ipcRenderer.invoke('pl:remove-at', id, indice),
+    move: (id, desde, hasta) => ipcRenderer.invoke('pl:move', id, desde, hasta),
+    setTracks: (id, trackIds) => ipcRenderer.invoke('pl:set-tracks', id, trackIds),
+    onChange: (h) => on('coll:playlists', h),
+  },
+
   // --- App ----------------------------------------------------------------
   app: {
     info: () => ipcRenderer.invoke('app:info'),

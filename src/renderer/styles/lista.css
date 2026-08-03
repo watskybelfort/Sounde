@@ -268,6 +268,20 @@
   color: var(--texto);
 }
 
+/* Linea de insercion al reordenar. */
+.lista__linea {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: calc(var(--hueco, 0) * var(--alto-fila));
+  height: 2px;
+  margin-top: -1px;
+  border-radius: var(--radio-full);
+  background: rgb(var(--acento));
+  box-shadow: 0 0 0 3px rgb(var(--acento) / 0.18);
+  pointer-events: none;
+}
+
 /* --------------------------------------------------------- montaje en vista */
 
 /* Con la lista dentro, el que desplaza es su viewport, no el cuerpo: dos

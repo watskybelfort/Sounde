@@ -28,6 +28,8 @@ export function crearLista(opciones = {}) {
     conAlbum = true,
     conArte = true,
     onFavorito,
+    onMenu,
+    onMover,
   } = opciones;
 
   let todas = [];
@@ -41,7 +43,8 @@ export function crearLista(opciones = {}) {
   const pool = [];
 
   const filas = el('div', { class: 'lista__espacio' });
-  const viewport = el('div', { class: 'lista__viewport', tabindex: '0' }, [filas]);
+  const linea = el('div', { class: 'lista__linea', hidden: true });
+  const viewport = el('div', { class: 'lista__viewport', tabindex: '0' }, [filas, linea]);
   const cabecera = conCabecera ? crearCabecera() : null;
   const raiz = el('div', {
     class: `lista${conAlbum ? '' : ' lista--sin-album'}${conArte ? '' : ' lista--sin-arte'}`,
@@ -49,6 +52,50 @@ export function crearLista(opciones = {}) {
   raiz.style.setProperty('--alto-fila', `${altoFila}px`);
 
   viewport.addEventListener('scroll', pintar, { passive: true });
+
+  // --- Reordenado (solo donde el orden lo decide el usuario) ----------------
+
+  let arrastrando = null;
+  let hueco = -1;
+
+  function huecoEn(clientY) {
+    const r = viewport.getBoundingClientRect();
+    const y = clientY - r.top + viewport.scrollTop;
+    // round y no floor: el destino es el hueco ENTRE filas, asi que la mitad
+    // de arriba de una fila deja la pista encima y la de abajo, debajo.
+    return clamp(Math.round(y / altoFila), 0, visibles.length);
+  }
+
+  function finArrastre() {
+    arrastrando = null;
+    hueco = -1;
+    linea.hidden = true;
+  }
+
+  if (onMover) {
+    viewport.addEventListener('dragover', (e) => {
+      if (arrastrando === null) return;
+      e.preventDefault();
+      // Sin frenarlo, el manejador global de archivos enciende la capa de
+      // "suelta la musica aqui" mientras se reordena la lista.
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+      hueco = huecoEn(e.clientY);
+      linea.hidden = false;
+      linea.style.setProperty('--hueco', String(hueco));
+    });
+
+    viewport.addEventListener('drop', (e) => {
+      if (arrastrando === null) return;
+      e.preventDefault();
+      e.stopPropagation();
+      // Al sacar la pista de su sitio, lo que venia detras sube un puesto.
+      const destino = arrastrando < hueco ? hueco - 1 : hueco;
+      const origen = arrastrando;
+      finArrastre();
+      if (destino !== origen) onMover(origen, destino);
+    });
+  }
 
   // Un redimensionado cambia cuantas filas caben: sin esto, agrandar la
   // ventana deja media pantalla en blanco hasta que alguien toque el scroll.
@@ -220,6 +267,26 @@ export function crearLista(opciones = {}) {
       pintar();
     });
     nodo.addEventListener('dblclick', () => lanzar(indiceActual));
+
+    if (onMenu) {
+      nodo.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        seleccion = indiceActual;
+        pintar();
+        onMenu(visibles[indiceActual], indiceActual, e);
+      });
+    }
+
+    if (onMover) {
+      nodo.draggable = true;
+      nodo.addEventListener('dragstart', (e) => {
+        arrastrando = indiceActual;
+        e.dataTransfer.effectAllowed = 'move';
+        // Chromium no arranca el arrastre si no se le dan datos.
+        e.dataTransfer.setData('text/plain', String(indiceActual));
+      });
+      nodo.addEventListener('dragend', finArrastre);
+    }
 
     return {
       nodo,

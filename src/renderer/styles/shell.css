@@ -190,6 +190,28 @@
   padding-top: 10px;
 }
 
+/* El grupo de listas es el que cede sitio cuando la ventana es baja: las
+   carpetas son cuatro y las listas pueden ser cuarenta. */
+.lateral__grupo--listas {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.lateral__listas {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+
+.lateral__listas .lateral__item {
+  height: 30px;
+  font-size: 12.5px;
+}
+
 /* Carpetas vigiladas */
 
 .lateral__carpetas {
