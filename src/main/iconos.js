@@ -31,6 +31,22 @@ const FORMAS = {
   siguiente: () => [rect(0.64, 0.2, 0.12, 0.6), triangulo(0.22, 0.2, 0.22, 0.8, 0.6, 0.5)],
 };
 
+/**
+ * La marca: las mismas cinco barras del SVG de la barra de titulo.
+ *
+ * Ahi el trazo es de 1.6 sobre 16, o sea 0.1 del lado. A 16 pixeles reales eso
+ * es barra y media y en la bandeja del sistema se pierde, asi que aqui van
+ * algo mas gruesas. Es el unico sitio donde la marca se separa del SVG, y es
+ * por legibilidad, no por descuido.
+ */
+const LOGO = () => [
+  rect(0.105, 0.45, 0.13, 0.10),
+  rect(0.248, 0.3125, 0.13, 0.375),
+  rect(0.435, 0.1625, 0.13, 0.675),
+  rect(0.623, 0.3125, 0.13, 0.375),
+  rect(0.766, 0.45, 0.13, 0.10),
+];
+
 /** El distintivo lleva disco de fondo y el glifo calado encima. */
 const DISTINTIVOS = {
   reproducir: { fondo: [circulo(0.5, 0.5, 0.5)], hueco: FORMAS.reproducir() },
@@ -50,6 +66,11 @@ function glifo(nombre) {
   const dibujar = FORMAS[nombre];
   if (!dibujar) return nativeImage.createEmpty();
   return conRepresentaciones((tam) => pintar(tam, { formas: dibujar(), color: [255, 255, 255] }));
+}
+
+/** La marca de Sounde en el color de acento, para la bandeja del sistema. */
+function marca() {
+  return conRepresentaciones((tam) => pintar(tam, { formas: LOGO(), color: ACENTO }));
 }
 
 /** Distintivo para el icono de la barra de tareas: disco con el glifo calado. */
@@ -132,4 +153,4 @@ function triangulo(ax, ay, bx, by, cx, cy) {
   };
 }
 
-module.exports = { glifo, distintivo };
+module.exports = { glifo, distintivo, marca };

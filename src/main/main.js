@@ -13,6 +13,7 @@ const protocols = require('./protocols');
 const { Library } = require('./library');
 const { Collections } = require('./collections');
 const taskbar = require('./taskbar');
+const bandeja = require('./bandeja');
 
 const APP_URL = 'sounde://app/index.html';
 
@@ -30,6 +31,8 @@ let mainWindow = null;
 let settings = null;
 let library = null;
 let collections = null;
+/** Distingue "cerrar la ventana" de "salir del programa" con la bandeja puesta. */
+let saliendo = false;
 
 function main() {
   app.setAppUserModelId('com.mxrningstar.sounde');
@@ -42,6 +45,9 @@ function main() {
   app.on('second-instance', (_e, argv) => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     if (mainWindow.isMinimized()) mainWindow.restore();
+    // Escondida en la bandeja, restore() no la saca: hay que mostrarla. Sin
+    // esto, volver a abrir Sounde desde el menu de inicio no hace nada visible.
+    if (!mainWindow.isVisible()) mainWindow.show();
     mainWindow.focus();
     abrirArchivos(archivosDeArgv(argv));
   });
@@ -77,6 +83,7 @@ function main() {
 
     mainWindow = createMainWindow(settings);
     mainWindow.loadURL(APP_URL);
+    aBandejaAlCerrar(mainWindow);
 
     if (settings.get('miniPlayer')) {
       mainWindow.once('ready-to-show', () => setMiniPlayer(mainWindow, true));
@@ -95,6 +102,7 @@ function main() {
       if (BrowserWindow.getAllWindows().length === 0) {
         mainWindow = createMainWindow(settings);
         mainWindow.loadURL(APP_URL);
+        aBandejaAlCerrar(mainWindow);
       }
     });
   });
@@ -104,7 +112,26 @@ function main() {
     app.quit();
   });
 
-  app.on('before-quit', cerrar);
+  app.on('before-quit', () => {
+    // A partir de aqui la X ya no esconde: se esta saliendo de verdad.
+    saliendo = true;
+    cerrar();
+  });
+}
+
+/**
+ * Con la bandeja puesta, la X esconde la ventana en vez de cerrarla.
+ *
+ * Es lo que se quiere de un reproductor (la musica no tiene por que parar
+ * porque hayas cerrado la ventana), pero no es lo que se espera de una ventana
+ * cualquiera. Por eso el ajuste viene apagado y hay que pedirlo.
+ */
+function aBandejaAlCerrar(win) {
+  win.on('close', (evento) => {
+    if (saliendo || !settings?.get('minimizeToTray', false)) return;
+    evento.preventDefault();
+    win.hide();
+  });
 }
 
 function cerrar() {
@@ -114,6 +141,7 @@ function cerrar() {
   // Sin esto Windows deja la barra verde pegada al icono hasta que el hueco de
   // la barra de tareas se recicla, que puede tardar.
   taskbar.limpiar(mainWindow);
+  bandeja.destruir();
 }
 
 /**

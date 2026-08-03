@@ -9,6 +9,7 @@ const { AUDIO_EXTENSIONS, EQ_BANDS, EQ_PRESETS } = require('./defaults');
 const m3u = require('./m3u');
 const taskbar = require('./taskbar');
 const notificaciones = require('./notificaciones');
+const bandeja = require('./bandeja');
 
 /**
  * Registra los handlers del proceso principal.
@@ -63,6 +64,14 @@ function registerIpc(ctx) {
    * varias veces por minuto y no espera respuesta. Un invoke por cada aviso
    * seria una promesa ida y vuelta para nada.
    */
+  const mandarOrden = (orden) => emitir('player:command', { orden });
+
+  bandeja.sincronizar(settings.get('minimizeToTray', false), {
+    getWindow,
+    mandar: mandarOrden,
+    salir: () => app.quit(),
+  });
+
   let ultimaVentana = null;
   ipcMain.on('player:state', (_e, estado) => {
     const win = getWindow();
@@ -74,16 +83,18 @@ function registerIpc(ctx) {
       ultimaVentana = win;
       taskbar.reiniciar();
     }
-    taskbar.aplicarEstado(win, estado, (orden) => emitir('player:command', { orden }));
+    taskbar.aplicarEstado(win, estado, mandarOrden);
 
-    // El aviso sale del mismo parte porque el cambio de pista ya viene ahi: un
-    // canal aparte solo para eso mandaria dos mensajes por cada cancion.
-    if (estado?.id) {
-      notificaciones.avisarDePista(win, library.get(estado.id), {
+    // El aviso y la bandeja salen del mismo parte porque el cambio de pista ya
+    // viene ahi: un canal por cada uno mandaria tres mensajes por cancion.
+    const track = estado?.id ? library.get(estado.id) : null;
+    if (track) {
+      notificaciones.avisarDePista(win, track, {
         activo: settings.get('showNotifications', true),
         sonando: !!estado.sonando,
       });
     }
+    bandeja.actualizar({ track, sonando: !!estado?.sonando, hayPista: !!estado?.hayPista });
   });
 
   // --- Ajustes ------------------------------------------------------------
@@ -92,6 +103,11 @@ function registerIpc(ctx) {
   ipcMain.handle('settings:set', (_e, patch) => {
     if (!patch || typeof patch !== 'object') return settings.all();
     settings.merge(patch);
+    // La bandeja se enciende y se apaga en el acto: si esperase al siguiente
+    // arranque, el ajuste pareceria no hacer nada.
+    if (patch.minimizeToTray !== undefined) {
+      bandeja.sincronizar(!!patch.minimizeToTray, { getWindow, mandar: mandarOrden, salir: () => app.quit() });
+    }
     emitir('settings:changed', patch);
     return settings.all();
   });
