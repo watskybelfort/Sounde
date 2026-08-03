@@ -14,6 +14,7 @@ import { crearListas } from './listas.js';
 import { crearAcciones } from './acciones.js';
 import { initAtajos } from './atajos.js';
 import { crearComandos } from './comandos.js';
+import { initSesionMedios } from './mediasession.js';
 import { $, pintarGlifo } from './dom.js';
 
 const raiz = document.documentElement;
@@ -43,6 +44,10 @@ async function boot() {
   const cola = engancharCola(motor, ajustes);
   engancharPaleta(motor, ajustes);
   engancharVisualizador(motor, ajustes);
+  const sesion = initSesionMedios(motor, { activo: ajustes.mediaKeys !== false });
+  window.sounde.settings.onChange((patch) => {
+    if (patch.mediaKeys !== undefined) sesion.setActivo(patch.mediaKeys !== false);
+  });
 
   const acciones = crearAcciones({ motor, shell, favoritos, cola, raiz });
   const comandos = crearComandos({ acciones, shell, motor, favoritos, listas });
