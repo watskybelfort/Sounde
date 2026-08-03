@@ -125,7 +125,7 @@
    canciones en la misma ventana y deben leerse como la misma cosa. */
 .cat__fila {
   display: grid;
-  grid-template-columns: 40px minmax(0, 2.4fr) minmax(0, 1.5fr) 30px 64px;
+  grid-template-columns: 40px minmax(0, 2.4fr) minmax(0, 1.5fr) 30px 64px 32px;
   align-items: center;
   gap: 12px;
   height: 52px;
@@ -137,7 +137,7 @@
 /* En ventanas estrechas el album estorba antes que nada, igual que alli. */
 @container (max-width: 620px) {
   .cat__fila {
-    grid-template-columns: 40px minmax(0, 1fr) 30px 64px;
+    grid-template-columns: 40px minmax(0, 1fr) 30px 64px 32px;
   }
 
   .cat__fila-album {
@@ -230,4 +230,25 @@
 .lateral__grupo--servicio[data-sincronizando='true'] .lateral__accion {
   opacity: 0.5;
   pointer-events: none;
+}
+
+/*
+ * El boton de abrir en el servicio solo aparece al pasar por encima.
+ *
+ * Fijo, una columna de flechitas repetida en cada fila compite con el titulo
+ * por la atencion y no hace falta hasta que la buscas.
+ */
+.cat__fila-abrir {
+  opacity: 0;
+  width: 28px;
+  height: 28px;
+}
+
+.cat__fila:hover .cat__fila-abrir,
+.cat__fila-abrir:focus-visible {
+  opacity: 0.75;
+}
+
+.cat__fila-abrir:hover {
+  opacity: 1;
 }

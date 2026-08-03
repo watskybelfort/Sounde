@@ -109,6 +109,21 @@ export function crearVistaCatalogo({ queue, resolver, listas }) {
             el('span', { class: 'boton__icono', texto: glifo('lista') }),
             el('span', { texto: 'Guardar como lista' }),
           ]),
+          /*
+           * Sounde no descarga de estos servicios y no va a hacerlo. Lo que
+           * si puede es ahorrarte el trabajo de apuntar a mano que te falta:
+           * este boton escribe la lista a un archivo de texto para que la
+           * lleves a donde vayas a conseguir la musica.
+           */
+          el('button', {
+            class: 'boton',
+            ...(datos.faltan ? {} : { disabled: true }),
+            title: 'Guardar en un archivo la lista de las que no tienes',
+            onclick: exportarLoQueFalta,
+          }, [
+            el('span', { class: 'boton__icono', texto: glifo('exportar') }),
+            el('span', { texto: `Exportar lo que falta (${datos.faltan ?? 0})` }),
+          ]),
         ]),
 
         el('div', { class: 'segmentado cat__filtros' }, FILTROS.map((f) => el('button', {
@@ -135,6 +150,21 @@ export function crearVistaCatalogo({ queue, resolver, listas }) {
       aceptar: 'Crear',
     });
     if (nombre) await listas?.crear(nombre, ids);
+  }
+
+  async function exportarLoQueFalta() {
+    const faltan = datos.items.filter((i) => !i.local);
+    if (!faltan.length) return;
+    await window.sounde.servicios.exportarFaltantes({
+      lista: datos.name,
+      items: faltan.map((i) => ({
+        titulo: i.title,
+        artistas: (i.artists ?? []).join(', '),
+        album: i.album ?? '',
+        duracion: i.duration ?? 0,
+        url: i.uri ?? '',
+      })),
+    });
   }
 
   function cuerpo() {
@@ -229,6 +259,25 @@ export function crearVistaCatalogo({ queue, resolver, listas }) {
       }),
 
       el('span', { class: 'cat__fila-tiempo tabular', texto: formatoTiempo(item.duration) }),
+
+      /*
+       * Abrir la cancion donde vive.
+       *
+       * Es lo que sustituye a un boton de descarga: Sounde no baja audio de
+       * estos servicios, pero llevarte de un clic a la pagina de la cancion
+       * si puede, y desde ahi decides tu.
+       */
+      item.uri ? el('button', {
+        class: 'icono-btn cat__fila-abrir',
+        title: `Abrir en ${datos.servicio === 'youtube' ? 'YouTube' : 'Spotify'}`,
+        'aria-label': `Abrir "${item.title}" en el navegador`,
+        texto: glifo('abrir'),
+        onclick: (e) => {
+          // Sin frenarlo, ademas de abrir el navegador arrancaria la cancion.
+          e.stopPropagation();
+          window.sounde.app.abrirExterno(item.uri);
+        },
+      }) : el('span'),
     ]);
   }
 

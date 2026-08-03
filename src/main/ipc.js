@@ -372,6 +372,41 @@ function registerIpc(ctx) {
 
   ipcMain.handle('svc:playlist', conServicio((s, listaId) => s.lista(listaId)));
 
+  /**
+   * Guarda en un archivo la lista de las canciones que no tienes.
+   *
+   * Sounde no descarga de estos servicios. Esto es lo que si puede hacer:
+   * ahorrarte apuntar a mano que te falta, para que te lo lleves a donde
+   * vayas a conseguir la musica.
+   */
+  ipcMain.handle('svc:export-missing', withWindow(async (win, _e, datos) => {
+    const items = Array.isArray(datos?.items) ? datos.items : [];
+    if (!items.length) return null;
+
+    const nombre = String(datos?.lista ?? 'lista').replace(/[\\/:*?"<>|]/g, '_');
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: 'Guardar lo que falta',
+      defaultPath: `${nombre} — lo que me falta.txt`,
+      filters: [
+        { name: 'Texto', extensions: ['txt'] },
+        { name: 'CSV', extensions: ['csv'] },
+      ],
+    });
+    if (canceled || !filePath) return null;
+
+    const csv = path.extname(filePath).toLowerCase() === '.csv';
+    const texto = csv ? comoCsv(items) : comoTexto(datos?.lista, items);
+
+    try {
+      // BOM para que Excel y el Bloc de notas no destrocen los acentos.
+      await require('node:fs/promises').writeFile(filePath, `﻿${texto}`, 'utf8');
+      return { ok: true, filePath, total: items.length };
+    } catch (err) {
+      console.error('[servicios] no pude exportar:', err.message);
+      return { ok: false, error: err.message };
+    }
+  }));
+
   // --- Letras ---------------------------------------------------------------
   ipcMain.handle('lyrics:for', async (_e, id) => {
     const track = id ? library.get(id) : null;
@@ -420,6 +455,38 @@ function registerIpc(ctx) {
     eqPresets: EQ_PRESETS,
     audioExtensions: AUDIO_EXTENSIONS,
   }));
+}
+
+const dosDigitos = (n) => String(n).padStart(2, '0');
+
+function duracion(segundos) {
+  const t = Math.max(0, Math.round(Number(segundos) || 0));
+  return `${Math.floor(t / 60)}:${dosDigitos(t % 60)}`;
+}
+
+function comoTexto(lista, items) {
+  const cabecera = [
+    `Lo que me falta de "${lista ?? 'la lista'}"`,
+    `${items.length} canciones`,
+    '',
+  ];
+  const filas = items.map((i, n) => {
+    const linea = `${n + 1}. ${i.artistas || 'Artista desconocido'} — ${i.titulo}`;
+    const extra = [i.album, duracion(i.duracion)].filter(Boolean).join(' · ');
+    return extra ? `${linea}\n   ${extra}\n   ${i.url ?? ''}` : linea;
+  });
+  return `${[...cabecera, ...filas].join('\n')}\n`;
+}
+
+/** Las comillas dobles se escapan doblandolas, que es lo que entiende Excel. */
+const celda = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
+function comoCsv(items) {
+  const cabecera = ['Artista', 'Titulo', 'Album', 'Duracion', 'Enlace'];
+  const filas = items.map((i) => [
+    i.artistas, i.titulo, i.album, duracion(i.duracion), i.url,
+  ].map(celda).join(','));
+  return `${[cabecera.join(','), ...filas].join('\r\n')}\r\n`;
 }
 
 /**

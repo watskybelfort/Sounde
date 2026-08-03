@@ -143,6 +143,7 @@ contextBridge.exposeInMainWorld('sounde', {
     cancelar: (svc) => ipcRenderer.invoke('svc:cancel-sync', svc),
     listas: (svc) => ipcRenderer.invoke('svc:playlists', svc),
     lista: (svc, id) => ipcRenderer.invoke('svc:playlist', svc, id),
+    exportarFaltantes: (datos) => ipcRenderer.invoke('svc:export-missing', datos),
     onProgreso: (h) => on('svc:progress', h),
     onCambio: (h) => on('svc:changed', h),
   },
