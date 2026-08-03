@@ -8,6 +8,7 @@ const protocols = require('./protocols');
 const { AUDIO_EXTENSIONS, EQ_BANDS, EQ_PRESETS } = require('./defaults');
 const m3u = require('./m3u');
 const taskbar = require('./taskbar');
+const notificaciones = require('./notificaciones');
 
 /**
  * Registra los handlers del proceso principal.
@@ -74,6 +75,15 @@ function registerIpc(ctx) {
       taskbar.reiniciar();
     }
     taskbar.aplicarEstado(win, estado, (orden) => emitir('player:command', { orden }));
+
+    // El aviso sale del mismo parte porque el cambio de pista ya viene ahi: un
+    // canal aparte solo para eso mandaria dos mensajes por cada cancion.
+    if (estado?.id) {
+      notificaciones.avisarDePista(win, library.get(estado.id), {
+        activo: settings.get('showNotifications', true),
+        sonando: !!estado.sonando,
+      });
+    }
   });
 
   // --- Ajustes ------------------------------------------------------------

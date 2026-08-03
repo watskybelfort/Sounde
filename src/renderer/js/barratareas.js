@@ -22,6 +22,9 @@ export function initBarraTareas(motor) {
   let ultimo = 0;
 
   const foto = () => ({
+    // El id, no el titulo: el proceso principal ya tiene la pista entera en la
+    // biblioteca y asi no hay dos copias de los metadatos que puedan divergir.
+    id: player.track?.id ?? null,
     hayPista: !!player.track,
     sonando: player.playing,
     // Con repeticion de toda la cola siempre hay siguiente, aunque sea la
