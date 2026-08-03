@@ -118,7 +118,6 @@
 .cola__fila[data-actual='true'] .cola__fila-titulo {
   color: rgb(var(--acento));
   font-weight: 600;
-  transition: color var(--dur-paleta) var(--ease-in-out);
 }
 
 /* Lo ya reproducido se apaga: sigue ahi para poder volver, pero no compite

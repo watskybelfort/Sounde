@@ -7,6 +7,7 @@ import { crearMotor } from './engine.js';
 import { initShell } from './shell.js';
 import { initTransporte } from './transport.js';
 import { crearCola } from './cola.js';
+import { crearPaleta } from './paleta.js';
 import { $, pintarGlifo } from './dom.js';
 
 const raiz = document.documentElement;
@@ -32,6 +33,7 @@ async function boot() {
   const shell = initShell(motor, ajustes);
   initTransporte(motor);
   engancharCola(motor, ajustes);
+  engancharPaleta(motor, ajustes);
 
   motor.queue.on('track', ({ track }) => {
     const titulo = track ? `${track.artist} — ${track.title}` : 'Sounde';
@@ -48,6 +50,38 @@ async function boot() {
   });
 
   await shell.refrescar();
+}
+
+function engancharPaleta(motor, ajustes) {
+  const paleta = crearPaleta({ ajustes });
+  const boton = $('#btn-paleta');
+
+  const pintar = () => {
+    const fijado = !paleta.adaptativo;
+    pintarGlifo(boton, fijado ? 'soltar' : 'fijar');
+    boton.setAttribute('aria-pressed', String(fijado));
+    boton.title = fijado
+      ? 'Color fijado: volver a seguir la caratula'
+      : 'Fijar este color y dejar de seguir la caratula';
+  };
+
+  boton.addEventListener('click', () => {
+    if (paleta.adaptativo) {
+      // Fijar guarda el color que hay ahora mismo, no el de por defecto: la
+      // gracia es quedarse con el que acaba de gustar.
+      const hex = paleta.fijar();
+      window.sounde.settings.set({ adaptiveColor: false, accentFallback: hex });
+    } else {
+      paleta.soltar(motor.player.track);
+      window.sounde.settings.set({ adaptiveColor: true });
+    }
+    pintar();
+  });
+
+  motor.player.on('trackchange', ({ track }) => paleta.aplicar(track));
+  pintar();
+  paleta.aplicar(motor.player.track);
+  return paleta;
 }
 
 function engancharCola(motor, ajustes) {
@@ -89,13 +123,20 @@ export function aplicarAjustes(ajustes) {
   if (ajustes.glassOpacity !== undefined) {
     raiz.style.setProperty('--transparencia', String(ajustes.glassOpacity));
   }
-  if (ajustes.backdropTint !== undefined) {
+  // Con el color adaptativo encendido manda la caratula: escribir aqui el
+  // tinte o el acento guardados los pisaria a media transicion y el vidrio
+  // daria un salto de color en mitad de la cancion.
+  if (ajustes.adaptiveColor !== undefined) adaptativo = !!ajustes.adaptiveColor;
+
+  if (ajustes.backdropTint !== undefined && !adaptativo) {
     raiz.style.setProperty('--tinte', hexARgb(ajustes.backdropTint));
   }
-  if (ajustes.accentFallback !== undefined && !ajustes.adaptiveColor) {
+  if (ajustes.accentFallback !== undefined && !adaptativo) {
     raiz.style.setProperty('--acento', hexARgb(ajustes.accentFallback));
   }
 }
+
+let adaptativo = true;
 
 /** '#7AA2F7' -> '122 162 247', que es el formato que quieren las variables. */
 export function hexARgb(hex) {

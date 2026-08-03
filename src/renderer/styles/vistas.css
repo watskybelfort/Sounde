@@ -76,8 +76,7 @@
   box-shadow: var(--sombra-2);
   opacity: 0;
   transform: translateY(8px);
-  transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out),
-              background var(--dur-paleta) var(--ease-in-out);
+  transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
 }
 
 .tarjeta:hover .tarjeta__play,

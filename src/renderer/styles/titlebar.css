@@ -34,7 +34,6 @@
   width: 16px;
   height: 16px;
   color: rgb(var(--acento));
-  transition: color var(--dur-paleta) var(--ease-in-out);
 }
 
 .titlebar__espacio {

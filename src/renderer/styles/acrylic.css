@@ -81,7 +81,14 @@
   --dur-3: 340ms;
 
   /* Transicion del color adaptativo. Larga a proposito: el tinte tiene que
-     derivar de un tema a otro, no parpadear. */
+     derivar de un tema a otro, no parpadear.
+     La usa js/paleta.js, que interpola en HSL por el camino corto del tono.
+     NADA en CSS debe llevar transition sobre una propiedad que salga de
+     --acento o --tinte: serian dos animadores sobre el mismo valor, y como
+     el de JS reescribe la variable en cada fotograma, la transicion de CSS
+     se reinicia sin parar y nunca llega a su destino. El sintoma es
+     desconcertante: el acento ya vale naranja pero la barra de progreso y el
+     logo siguen pintando el violeta del album anterior para siempre. */
   --dur-paleta: 900ms;
 }
 

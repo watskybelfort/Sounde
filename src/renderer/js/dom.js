@@ -36,6 +36,8 @@ export const ICONO = {
   flechaArriba: 0xe70e,
   flechaAbajo: 0xe70d,
   cola: 0xe8fd,
+  fijar: 0xe718,
+  soltar: 0xe77a,
   vaciar: 0xe74d,
   asa: 0xe76f,
   ajustes: 0xe713,

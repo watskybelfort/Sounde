@@ -144,7 +144,6 @@
   transform: translateY(-50%);
   border-radius: var(--radio-full);
   background: rgb(var(--acento));
-  transition: background var(--dur-paleta) var(--ease-in-out);
 }
 
 .lateral__icono {
@@ -281,11 +280,14 @@
   border-color: transparent;
   color: #0b0e13;
   font-weight: 600;
-  transition: background var(--dur-paleta) var(--ease-in-out);
+  transition: filter var(--dur-1) var(--ease-out);
 }
 
+/* El hover aclara con filter en vez de cambiar el color: cualquier
+   transition sobre una propiedad que salga de --acento pelearia con la
+   animacion de la paleta. Ver la nota en acrylic.css. */
 .boton--acento:hover {
-  background: rgb(var(--acento));
+  filter: brightness(1.12);
 }
 
 .boton--ancho {

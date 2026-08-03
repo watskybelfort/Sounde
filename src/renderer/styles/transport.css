@@ -181,7 +181,6 @@
 .barra__relleno {
   width: calc(var(--valor, 0) * 100%);
   background: rgb(var(--acento));
-  transition: background var(--dur-paleta) var(--ease-in-out);
 }
 
 .barra__pomo {
