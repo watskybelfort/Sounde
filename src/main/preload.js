@@ -124,6 +124,27 @@ contextBridge.exposeInMainWorld('sounde', {
     onChange: (h) => on('coll:playlists', h),
   },
 
+  // --- Spotify --------------------------------------------------------------
+  /*
+   * Solo lectura del catalogo: no hay nada aqui que modifique la cuenta del
+   * usuario en Spotify, igual que los permisos que se piden al conectar.
+   * Ninguna peticion sale de la pagina — todas cruzan a este puente y viajan
+   * desde el proceso principal, que es lo que permite dejar la CSP sin
+   * `connect-src`.
+   */
+  spotify: {
+    estado: () => ipcRenderer.invoke('sp:state'),
+    setClientId: (valor) => ipcRenderer.invoke('sp:set-client-id', valor),
+    conectar: () => ipcRenderer.invoke('sp:connect'),
+    desconectar: () => ipcRenderer.invoke('sp:disconnect'),
+    sincronizar: () => ipcRenderer.invoke('sp:sync'),
+    cancelar: () => ipcRenderer.invoke('sp:cancel-sync'),
+    listas: () => ipcRenderer.invoke('sp:playlists'),
+    lista: (id) => ipcRenderer.invoke('sp:playlist', id),
+    onProgreso: (h) => on('sp:progress', h),
+    onCambio: (h) => on('sp:changed', h),
+  },
+
   // --- Letras ---------------------------------------------------------------
   lyrics: {
     para: (id) => ipcRenderer.invoke('lyrics:for', id),

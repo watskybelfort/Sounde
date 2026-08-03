@@ -11,6 +11,7 @@ const taskbar = require('./taskbar');
 const notificaciones = require('./notificaciones');
 const bandeja = require('./bandeja');
 const letras = require('./letras');
+const spotify = require('./spotify');
 
 /**
  * Registra los handlers del proceso principal.
@@ -28,6 +29,21 @@ function registerIpc(ctx) {
   const emitir = (canal, datos) => {
     const win = getWindow();
     if (win && !win.isDestroyed()) win.webContents.send(canal, datos);
+  };
+
+  /**
+   * La biblioteca ha cambiado.
+   *
+   * Va junto al aviso a proposito: el indice de emparejado de Spotify se
+   * construye sobre las pistas locales, asi que una cancion nueva en el disco
+   * lo deja obsoleto. Separando las dos cosas, cualquier camino nuevo que
+   * toque la biblioteca se olvidaria de invalidarlo y el sintoma seria de los
+   * peores: añades el archivo que faltaba, la lista de Spotify lo sigue dando
+   * por ausente, y solo se arregla reiniciando.
+   */
+  const bibliotecaCambio = () => {
+    spotify.olvidarIndice();
+    emitir('library:changed', { total: library.size() });
   };
 
   // --- Ventana ------------------------------------------------------------
@@ -130,7 +146,7 @@ function registerIpc(ctx) {
     const folders = settings.get('folders', []);
     if (!folders.length) return { ok: false, reason: 'sin-carpetas' };
     const res = await library.scan(folders, (p) => emitir('library:progress', p));
-    emitir('library:changed', { total: library.size() });
+    bibliotecaCambio();
     return res;
   });
 
@@ -152,7 +168,7 @@ function registerIpc(ctx) {
     for (const f of fusion) protocols.allowRoot(f);
 
     const res = await library.scan(fusion, (p) => emitir('library:progress', p));
-    emitir('library:changed', { total: library.size() });
+    bibliotecaCambio();
     return { folders: fusion, ...res };
   }));
 
@@ -166,7 +182,7 @@ function registerIpc(ctx) {
     for (const f of restantes) protocols.allowRoot(f);
 
     const res = await library.scan(restantes, (p) => emitir('library:progress', p));
-    emitir('library:changed', { total: library.size() });
+    bibliotecaCambio();
     return { folders: restantes, ...res };
   });
 
@@ -181,7 +197,7 @@ function registerIpc(ctx) {
     });
     if (canceled || !filePaths.length) return [];
     const tracks = await library.addFiles(filePaths);
-    emitir('library:changed', { total: library.size() });
+    bibliotecaCambio();
     return tracks.map(paraCliente);
   }));
 
@@ -189,7 +205,7 @@ function registerIpc(ctx) {
     if (!Array.isArray(rutas) || !rutas.length) return [];
     const expandidas = await expandir(rutas);
     const tracks = await library.addFiles(expandidas);
-    emitir('library:changed', { total: library.size() });
+    bibliotecaCambio();
     return tracks.map(paraCliente);
   });
 
@@ -294,9 +310,54 @@ function registerIpc(ctx) {
     }
 
     emitir('coll:playlists', { playlists: collections.playlists });
-    emitir('library:changed', { total: library.size() });
+    bibliotecaCambio();
     return creadas;
   }));
+
+  // --- Spotify --------------------------------------------------------------
+  spotify.init({ library });
+
+  ipcMain.handle('sp:state', () => spotify.estado());
+
+  ipcMain.handle('sp:set-client-id', (_e, valor) => spotify.setClientId(valor));
+
+  ipcMain.handle('sp:connect', async () => {
+    try {
+      await spotify.conectar();
+    } catch (err) {
+      return { ok: false, error: err.message, ...spotify.estado() };
+    }
+    // La primera sincronizacion sale sola: conectar la cuenta y encontrarse
+    // la pantalla vacia con un boton de "sincronizar" al lado es pedirle al
+    // usuario que haga a mano el segundo paso obvio del primero.
+    const res = await spotify.sincronizar({
+      onProgress: (p) => emitir('sp:progress', p),
+    });
+    emitir('sp:changed', spotify.estado());
+    return { ok: true, ...res, ...spotify.estado() };
+  });
+
+  ipcMain.handle('sp:disconnect', () => {
+    const estado = spotify.desconectar();
+    emitir('sp:changed', estado);
+    return estado;
+  });
+
+  ipcMain.handle('sp:sync', async () => {
+    const res = await spotify.sincronizar({
+      onProgress: (p) => emitir('sp:progress', p),
+    });
+    emitir('sp:changed', spotify.estado());
+    return res;
+  });
+
+  ipcMain.handle('sp:cancel-sync', () => spotify.cancelarSincronizacion());
+
+  ipcMain.handle('sp:playlists', () => spotify.listas());
+
+  ipcMain.handle('sp:playlist', (_e, id) => (
+    id === spotify.GUARDADAS ? spotify.guardadas() : spotify.lista(id)
+  ));
 
   // --- Letras ---------------------------------------------------------------
   ipcMain.handle('lyrics:for', async (_e, id) => {
