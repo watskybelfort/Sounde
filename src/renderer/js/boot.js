@@ -13,6 +13,7 @@ import { crearFavoritos } from './favoritos.js';
 import { crearListas } from './listas.js';
 import { crearAcciones } from './acciones.js';
 import { initAtajos } from './atajos.js';
+import { crearComandos } from './comandos.js';
 import { $, pintarGlifo } from './dom.js';
 
 const raiz = document.documentElement;
@@ -44,6 +45,21 @@ async function boot() {
   engancharVisualizador(motor, ajustes);
 
   const acciones = crearAcciones({ motor, shell, favoritos, cola, raiz });
+  const comandos = crearComandos({ acciones, shell, motor, favoritos, listas });
+
+  // La paleta se anade al catalogo despues de crearla porque necesita el
+  // propio catalogo para buscar: sin este orden se referencia a si misma.
+  acciones.unshift({
+    id: 'comandos',
+    texto: 'Abrir la paleta de comandos',
+    icono: 'buscar',
+    grupo: 'Ventana',
+    tecla: { key: 'k', ctrl: true },
+    atajo: 'Ctrl + K',
+    siempre: true,
+    ejecutar: () => comandos.alternar(),
+  });
+
   initAtajos(acciones);
 
   motor.queue.on('track', ({ track }) => {

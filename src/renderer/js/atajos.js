@@ -22,10 +22,16 @@ export function initAtajos(acciones, { alPulsar } = {}) {
     // Un dialogo o un menu abiertos se quedan con el teclado: dispararle un
     // atajo global a alguien que esta confirmando un borrado es peligroso.
     if (document.querySelector('.dialogo-capa, .menu')) return;
+
+    // La paleta de comandos es una excepcion parcial: mientras esta abierta
+    // solo responde su propio atajo, que sirve para cerrarla.
+    const enPaleta = !!document.querySelector('.comandos-capa');
+
     if (evento.repeat && evento.key === ' ') return;
 
     for (const accion of porTecla) {
       if (!coincide(evento, accion.tecla)) continue;
+      if (enPaleta && !accion.siempre) continue;
 
       // Los atajos sin modificador solo valen fuera de un campo de texto. Los
       // que llevan Ctrl si funcionan siempre: Ctrl+F para buscar tiene que

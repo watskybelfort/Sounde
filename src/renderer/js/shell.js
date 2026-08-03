@@ -666,7 +666,10 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
     else if (lista.orden.por === 'ninguno') lista.setOrden(ajustes.sortBy ?? 'title', ajustes.sortDir ?? 'asc');
     lista.setPistas(fuenteDeLista());
     lista.setActual(player.track?.id ?? null, player.playing);
-    cuerpo.replaceChildren(lista.nodo, sinResultados(), vacioDeVista());
+    // filter(Boolean) no es cosmetico: replaceChildren convierte un null en
+    // el texto "null" y lo pinta en pantalla, al contrario que el ayudante
+    // el(), que los descarta. Aqui vacioDeVista() devuelve null en Canciones.
+    cuerpo.replaceChildren(...[lista.nodo, sinResultados(), vacioDeVista()].filter(Boolean));
   }
 
   /** Aviso propio de Favoritos y Recientes cuando aun no hay nada dentro. */
