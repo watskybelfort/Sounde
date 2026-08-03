@@ -16,6 +16,27 @@ function on(channel, handler) {
   return () => ipcRenderer.removeListener(channel, wrapped);
 }
 
+/**
+ * Los archivos de "Abrir con..." se guardan hasta que la pagina los pida.
+ *
+ * El proceso principal los manda en cuanto termina de cargar el documento,
+ * pero el arranque del renderer es asincrono: para cuando boot() ha leido los
+ * ajustes y montado el motor de audio, ese aviso ya paso y no lo escucho
+ * nadie. El sintoma era el peor posible para un reproductor predeterminado:
+ * doble clic en una cancion, se abre Sounde, y no suena nada. Con la app ya
+ * abierta si funcionaba, que es lo que despista.
+ *
+ * El preload se ejecuta ANTES que cualquier script de la pagina, asi que
+ * suscribirse aqui llega siempre a tiempo.
+ */
+const archivosPendientes = [];
+let alRecibirArchivos = null;
+
+ipcRenderer.on('app:open-files', (_event, tracks) => {
+  if (alRecibirArchivos) alRecibirArchivos(tracks);
+  else archivosPendientes.push(tracks);
+});
+
 contextBridge.exposeInMainWorld('sounde', {
   // --- Ventana ------------------------------------------------------------
   window: {
@@ -113,7 +134,13 @@ contextBridge.exposeInMainWorld('sounde', {
   app: {
     info: () => ipcRenderer.invoke('app:info'),
     constants: () => ipcRenderer.invoke('app:constants'),
-    onOpenFiles: (h) => on('app:open-files', h),
+
+    onOpenFiles: (h) => {
+      alRecibirArchivos = h;
+      // Lo que llego mientras la pagina arrancaba se entrega ahora, en orden.
+      while (archivosPendientes.length) h(archivosPendientes.shift());
+      return () => { alRecibirArchivos = null; };
+    },
   },
 
   // --- Entorno ------------------------------------------------------------
