@@ -8,7 +8,7 @@ npm run icono   # dibuja build/icon.ico a partir del codigo
 npm run dist    # deja el instalador en dist/
 ```
 
-Sale `dist/Sounde-1.0.0-x64.exe`, de unos 95 MB. Es un instalador NSIS **por
+Sale `dist/Sounde-1.1.0-x64.exe`, de unos 95 MB. Es un instalador NSIS **por
 usuario**: no pide administrador, se instala en
 `%LOCALAPPDATA%\Programs\Sounde` y se desinstala desde Configuración como
 cualquier otra aplicación.
@@ -18,7 +18,7 @@ suelta en `dist/win-unpacked/Sounde.exe`.
 
 ## 2. Instalar
 
-Doble clic en `dist/Sounde-1.0.0-x64.exe`. Deja elegir carpeta y crea accesos
+Doble clic en `dist/Sounde-1.1.0-x64.exe`. Deja elegir carpeta y crea accesos
 directos en el escritorio y en el menú de inicio.
 
 El instalador ya declara los trece tipos de archivo que Sounde sabe abrir
