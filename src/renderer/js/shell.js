@@ -577,7 +577,15 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
             }, [
               el('span', {
                 class: 'lateral__plegar-flecha',
-                texto: glifo(plegado ? 'desplegar' : 'plegar'),
+                /*
+                 * Abajo abierto, derecha cerrado — el triangulo de toda la
+                 * vida. Aqui NO valen `plegar`/`desplegar`, que son las
+                 * flechas izquierda y derecha: esas son las del lateral y las
+                 * de "volver", y son horizontales porque aquello se mueve de
+                 * lado. Esto se abre hacia abajo, y una flecha a la izquierda
+                 * sobre un grupo desplegado se lee como "retroceder".
+                 */
+                texto: glifo(plegado ? 'desplegar' : 'flechaAbajo'),
               }),
               el('span', { texto: s.nombre }),
               // Plegado, el grupo no dice nada de lo que guarda dentro. El
