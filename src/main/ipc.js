@@ -383,24 +383,35 @@ function registerIpc(ctx) {
     const items = Array.isArray(datos?.items) ? datos.items : [];
     if (!items.length) return null;
 
+    const formato = FORMATOS[datos?.formato] ?? FORMATOS.informe;
     const nombre = String(datos?.lista ?? 'lista').replace(/[\\/:*?"<>|]/g, '_');
     const { canceled, filePath } = await dialog.showSaveDialog(win, {
       title: 'Guardar lo que falta',
-      defaultPath: `${nombre} — lo que me falta.txt`,
-      filters: [
-        { name: 'Texto', extensions: ['txt'] },
-        { name: 'CSV', extensions: ['csv'] },
-      ],
+      defaultPath: `${nombre} — ${formato.sufijo}.${formato.ext}`,
+      filters: formato.filtros,
     });
     if (canceled || !filePath) return null;
 
-    const csv = path.extname(filePath).toLowerCase() === '.csv';
-    const texto = csv ? comoCsv(items) : comoTexto(datos?.lista, items);
+    const { texto, total } = formato.escribir(datos?.lista, items);
+    if (!total) return { ok: false, error: 'No habia ningun enlace que guardar.' };
 
     try {
-      // BOM para que Excel y el Bloc de notas no destrocen los acentos.
-      await require('node:fs/promises').writeFile(filePath, `﻿${texto}`, 'utf8');
-      return { ok: true, filePath, total: items.length };
+      /*
+       * El BOM va en los dos formatos que se leen y en ninguno mas.
+       *
+       * En el informe y en el CSV hace falta: sin el, Excel y el Bloc de
+       * notas interpretan el archivo en la pagina de codigos de Windows y
+       * los acentos salen rotos. En el de enlaces sobra y ademas estorba —
+       * esos tres bytes se pegan a la primera URL y quien lea el archivo
+       * con `-a` desde una linea de comandos se encuentra la primera
+       * entrada invalida sin ver por que.
+       */
+      await require('node:fs/promises').writeFile(
+        filePath,
+        formato.bom ? `﻿${texto}` : texto,
+        'utf8',
+      );
+      return { ok: true, filePath, total };
     } catch (err) {
       console.error('[servicios] no pude exportar:', err.message);
       return { ok: false, error: err.message };
@@ -462,6 +473,64 @@ const dosDigitos = (n) => String(n).padStart(2, '0');
 function duracion(segundos) {
   const t = Math.max(0, Math.round(Number(segundos) || 0));
   return `${Math.floor(t / 60)}:${dosDigitos(t % 60)}`;
+}
+
+/**
+ * Los tres formatos de "lo que falta", y para que sirve cada uno.
+ *
+ * El formato lo elige el usuario en el menu y manda sobre la extension. Antes
+ * se deducia de la extension que se escribiera en el dialogo de guardado, y
+ * eso funcionaba con dos formatos porque .txt y .csv no se pisan; con tres no
+ * puede funcionar, porque el informe y la lista de enlaces son los dos .txt y
+ * contienen cosas distintas.
+ */
+const FORMATOS = {
+  // Para leerlo: artista, titulo, album, duracion y enlace, tres lineas por
+  // cancion.
+  informe: {
+    ext: 'txt',
+    sufijo: 'lo que me falta',
+    bom: true,
+    filtros: [{ name: 'Texto', extensions: ['txt'] }],
+    escribir: (lista, items) => ({ texto: comoTexto(lista, items), total: items.length }),
+  },
+  // Para abrirlo en Excel y ordenar por columnas.
+  csv: {
+    ext: 'csv',
+    sufijo: 'lo que me falta',
+    bom: true,
+    filtros: [{ name: 'CSV', extensions: ['csv'] }],
+    escribir: (_lista, items) => ({ texto: comoCsv(items), total: items.length }),
+  },
+  // Para darselo a otra herramienta, no para leerlo.
+  enlaces: {
+    ext: 'txt',
+    sufijo: 'enlaces',
+    bom: false,
+    filtros: [{ name: 'Texto', extensions: ['txt'] }],
+    escribir: (_lista, items) => comoEnlaces(items),
+  },
+};
+
+/**
+ * Solo las URL, una por linea, y nada mas.
+ *
+ * Sin cabecera, sin numerar y sin lineas en blanco a proposito: este archivo
+ * no esta hecho para leerlo sino para pegarlo en un gestor de descargas o
+ * pasarselo a una herramienta que acepte una lista. Cualquier adorno se
+ * convierte alli en una entrada que falla.
+ *
+ * Se descarta lo que no tenga enlace en vez de dejar una linea vacia, y se
+ * devuelve cuantos salieron de verdad: si una lista de treinta deja veintiocho
+ * enlaces, el aviso tiene que decir veintiocho.
+ */
+function comoEnlaces(items) {
+  const urls = items
+    .map((i) => String(i.url ?? '').trim())
+    .filter(Boolean);
+  // CRLF porque el destino natural de esto en Windows es el Bloc de notas o
+  // un .bat, y con LF solo los dos lo muestran todo pegado en un renglon.
+  return { texto: urls.length ? `${urls.join('\r\n')}\r\n` : '', total: urls.length };
 }
 
 function comoTexto(lista, items) {

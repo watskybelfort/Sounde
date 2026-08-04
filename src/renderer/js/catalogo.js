@@ -13,6 +13,7 @@
 
 import { el, glifo, plural, formatoTiempo } from './dom.js';
 import { pedirTexto } from './dialogo.js';
+import { abrirMenu } from './menu.js';
 
 const FILTROS = [
   { valor: 'todo', texto: 'Todo' },
@@ -119,7 +120,7 @@ export function crearVistaCatalogo({ queue, resolver, listas }) {
             class: 'boton',
             ...(datos.faltan ? {} : { disabled: true }),
             title: 'Guardar en un archivo la lista de las que no tienes',
-            onclick: exportarLoQueFalta,
+            onclick: menuExportar,
           }, [
             el('span', { class: 'boton__icono', texto: glifo('exportar') }),
             el('span', { texto: `Exportar lo que falta (${datos.faltan ?? 0})` }),
@@ -152,11 +153,41 @@ export function crearVistaCatalogo({ queue, resolver, listas }) {
     if (nombre) await listas?.crear(nombre, ids);
   }
 
-  async function exportarLoQueFalta() {
+  /**
+   * El boton abre un menu en vez de exportar directo.
+   *
+   * Los tres formatos no son el mismo archivo con otra extension: el informe
+   * se lee, el CSV se ordena en Excel y el de enlaces se le da a otra
+   * herramienta. Elegir en el dialogo de guardado no valia — el informe y los
+   * enlaces son los dos .txt, asi que la extension no puede distinguirlos.
+   */
+  function menuExportar(evento) {
+    abrirMenu([
+      {
+        texto: 'Informe legible (.txt)',
+        icono: 'exportar',
+        onClick: () => exportar('informe'),
+      },
+      {
+        texto: 'Tabla para Excel (.csv)',
+        icono: 'importar',
+        onClick: () => exportar('csv'),
+      },
+      { separador: true },
+      {
+        texto: 'Solo los enlaces (.txt)',
+        icono: 'abrir',
+        onClick: () => exportar('enlaces'),
+      },
+    ], { x: evento.clientX, y: evento.clientY });
+  }
+
+  async function exportar(formato) {
     const faltan = datos.items.filter((i) => !i.local);
     if (!faltan.length) return;
     await window.sounde.servicios.exportarFaltantes({
       lista: datos.name,
+      formato,
       items: faltan.map((i) => ({
         titulo: i.title,
         artistas: (i.artists ?? []).join(', '),
