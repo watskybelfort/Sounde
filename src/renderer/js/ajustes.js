@@ -306,6 +306,39 @@ export function crearAjustes({ motor, ajustes, shell }) {
     }
     pintar();
 
+    /*
+     * Deshacer lo escondido tiene que estar aqui porque no puede estar en
+     * ningun otro sitio: una cancion escondida no sale en canciones, ni en
+     * albumes, ni en artistas, ni en la busqueda. Sin este boton la unica
+     * forma de recuperarla seria editar settings.json a mano.
+     */
+    const escondidas = el('div', { class: 'ajustes__bloque' });
+
+    function pintarEscondidas() {
+      const n = shell.cuantasEscondidas?.() ?? 0;
+      escondidas.hidden = !n;
+      if (!n) return;
+      escondidas.replaceChildren(
+        el('div', { class: 'ajustes__botones' }, [
+          el('span', {
+            class: 'ajustes__ayuda',
+            texto: n === 1
+              ? '1 cancion escondida de la aplicacion. El archivo sigue en el disco.'
+              : `${n} canciones escondidas de la aplicacion. Los archivos siguen en el disco.`,
+          }),
+          el('button', {
+            class: 'boton',
+            texto: 'Volver a mostrarlas',
+            onclick: async () => {
+              await shell.mostrarPistasEscondidas();
+              pintarEscondidas();
+            },
+          }),
+        ]),
+      );
+    }
+    pintarEscondidas();
+
     return seccion('Biblioteca', [
       fila('Reproducir con un clic',
         'Un clic en una cancion la pone a sonar. Apagado hace falta el doble clic, y el clic solo la selecciona.',
@@ -330,6 +363,8 @@ export function crearAjustes({ motor, ajustes, shell }) {
           }),
         ]),
       ]),
+
+      escondidas,
     ]);
   }
 

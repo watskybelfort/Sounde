@@ -120,6 +120,56 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
     if (vista.tipo === 'favoritos') pintarCuerpo();
   });
 
+  // --- Canciones escondidas -------------------------------------------------
+
+  /**
+   * Canciones que el usuario no quiere ver.
+   *
+   * Esconder NO borra el archivo. Sounde no tiene por que decidir que se
+   * queda en la carpeta de nadie, y borrar de verdad desde un menu contextual
+   * seria irreversible al primer resbalon. Lo que se guarda es el id, que se
+   * filtra nada mas cargar la biblioteca: a partir de ahi la cancion no esta
+   * en canciones, ni en albumes, ni en artistas, ni en recientes, ni en lo
+   * que se cruza contra los servicios, y vuelve entera al deshacerlo.
+   *
+   * Por id y no por ruta porque el id ya identifica al archivo y sobrevive a
+   * un reescaneo de la carpeta.
+   */
+  let pistasEscondidas = new Set(ajustes.hiddenTracks ?? []);
+
+  const cuantasEscondidas = () => pistasEscondidas.size;
+
+  async function esconderPista(track) {
+    if (!track || pistasEscondidas.has(track.id)) return;
+    pistasEscondidas.add(track.id);
+    await guardarPistasEscondidas();
+  }
+
+  async function mostrarPistasEscondidas() {
+    if (!pistasEscondidas.size) return;
+    pistasEscondidas = new Set();
+    await guardarPistasEscondidas();
+  }
+
+  async function guardarPistasEscondidas() {
+    window.sounde.settings.set({ hiddenTracks: [...pistasEscondidas] });
+    sacarDeLaCola();
+    await refrescar();
+  }
+
+  /*
+   * Esconderla y dejarla sonando seria lo mas raro que puede hacer esto: la
+   * cancion ya no esta en ninguna lista pero sigue saliendo por los altavoces
+   * y en la barra de reproduccion. Se recorre al reves para que quitar una no
+   * mueva el indice de las que quedan por mirar.
+   */
+  function sacarDeLaCola() {
+    const items = queue.snapshot?.().items ?? [];
+    for (let i = items.length - 1; i >= 0; i--) {
+      if (pistasEscondidas.has(items[i]?.id)) queue.removeAt(i);
+    }
+  }
+
   // --- Menu contextual de pista ---------------------------------------------
 
   function menuDePista(track, _indice, evento) {
@@ -153,6 +203,14 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
       album ? { texto: 'Ir al album', icono: 'album', onClick: () => abrir({ tipo: 'album', clave: album }) } : null,
       artista ? { texto: 'Ir al artista', icono: 'artista', onClick: () => abrir({ tipo: 'artista', clave: artista }) } : null,
       { texto: 'Abrir la ubicacion', icono: 'carpeta', onClick: () => window.sounde.library.reveal(track.path) },
+      { separador: true },
+      {
+        texto: 'Esconder de la aplicacion',
+        icono: 'quitar',
+        // No lleva `peligro` a proposito: se pinta en rojo lo que no se puede
+        // deshacer, y esto se deshace desde Ajustes con un boton.
+        onClick: () => esconderPista(track),
+      },
     ], { x: evento.clientX, y: evento.clientY });
   }
 
@@ -718,7 +776,15 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
   // --- Datos ----------------------------------------------------------------
 
   async function refrescar() {
-    pistas = await window.sounde.library.all();
+    /*
+     * El filtro va aqui y en ningun otro sitio. `pistas` es de donde salen
+     * canciones, albumes, artistas, recientes y el resolutor que usan las
+     * listas de los servicios, asi que filtrando una sola vez la cancion
+     * escondida desaparece de todo a la vez. Filtrarlo por vista habria sido
+     * repetir la misma condicion en seis sitios y olvidarla en el septimo.
+     */
+    pistas = (await window.sounde.library.all())
+      .filter((t) => !pistasEscondidas.has(t.id));
     const carpetas = await window.sounde.library.folders();
     escaneo.hidden = true;
 
@@ -1096,6 +1162,9 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
 
   return {
     refrescar, ir, alternarLetra, onVista, lista, refrescarServicios,
+    // Las escondidas se deshacen desde Ajustes, que es el unico sitio donde
+    // se pueden buscar cuando ya no estan en ninguna lista.
+    cuantasEscondidas, mostrarPistasEscondidas,
     get pistas() { return pistas; },
     get vista() { return vista; },
   };

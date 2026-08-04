@@ -60,6 +60,11 @@ const DEFAULT_SETTINGS = {
   // Listas remotas que el usuario ha escondido, por servicio:
   // { spotify: ['id', ...], youtube: [...] }
   hiddenPlaylists: {},
+  // Canciones locales escondidas, por id. El archivo NO se toca: esto solo
+  // decide que no aparezca en la aplicacion, y se deshace entero.
+  hiddenTracks: [],
+  // Servicios con el grupo del lateral plegado, por id: ['youtube', ...]
+  collapsedServices: [],
 
   // --- Ventana ------------------------------------------------------------
   bounds: null,
