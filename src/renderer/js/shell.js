@@ -475,6 +475,24 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
     }
   }
 
+  /**
+   * Servicios con el grupo plegado en el lateral.
+   *
+   * Esconder listas de una en una no resuelve el caso de tener YouTube
+   * conectado con veinte listas y querer, hoy, mirar solo lo local: habria
+   * que esconderlas todas y volver a mostrarlas manana. Plegar es lo otro,
+   * y es lo que hace falta — el servicio sigue entero, solo que ocupa una
+   * linea en vez de veinte.
+   */
+  let serviciosPlegados = new Set(ajustes.collapsedServices ?? []);
+
+  function alternarServicio(svcId) {
+    if (serviciosPlegados.has(svcId)) serviciosPlegados.delete(svcId);
+    else serviciosPlegados.add(svcId);
+    window.sounde.settings.set({ collapsedServices: [...serviciosPlegados] });
+    pintarServicios();
+  }
+
   function menuDeListaRemota(svc, playlist, evento) {
     const suyas = escondidas[svc.id] ?? [];
     abrirMenu([
@@ -536,13 +554,41 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
 
         const visibles = s.listas.filter((p) => !estaEscondida(s.id, p.id));
         const ocultas = s.listas.length - visibles.length;
+        const plegado = serviciosPlegados.has(s.id);
 
-        return el('div', { class: 'lateral__grupo lateral__grupo--servicio' }, [
+        return el('div', {
+          class: 'lateral__grupo lateral__grupo--servicio',
+          dataset: { plegado: String(plegado) },
+        }, [
           el('span', { class: 'lateral__titulo' }, [
-            document.createTextNode(s.nombre),
+            /*
+             * El nombre del servicio pasa a ser el propio boton de plegar en
+             * vez de llevar una flecha suelta al lado. Es la zona mas facil
+             * de acertar de todo el grupo, y asi no hay que afinar sobre un
+             * icono de 22 px que ademas competiria con el de sincronizar.
+             */
+            el('button', {
+              class: 'lateral__plegar',
+              'aria-expanded': String(!plegado),
+              title: plegado
+                ? `Mostrar las listas de ${s.nombre}`
+                : `Plegar las listas de ${s.nombre}`,
+              onClick: () => alternarServicio(s.id),
+            }, [
+              el('span', {
+                class: 'lateral__plegar-flecha',
+                texto: glifo(plegado ? 'desplegar' : 'plegar'),
+              }),
+              el('span', { texto: s.nombre }),
+              // Plegado, el grupo no dice nada de lo que guarda dentro. El
+              // numero evita tener que desplegarlo solo para ver si hay algo.
+              plegado && visibles.length
+                ? el('span', { class: 'lateral__plegar-cuenta tabular', texto: String(visibles.length) })
+                : null,
+            ]),
             sincronizar,
           ]),
-          el('div', { class: 'lateral__listas' }, visibles.map((p) => el('button', {
+          plegado ? null : el('div', { class: 'lateral__listas' }, visibles.map((p) => el('button', {
             class: 'lateral__item',
             title: `${p.name} — tienes ${p.encontradas} de ${p.total}`,
             onContextmenu: (e) => {
@@ -569,7 +615,9 @@ export function initShell(motor, ajustes = {}, { favoritos, listas } = {}) {
 
           // Sin esto, esconder una lista la hace desaparecer sin rastro y no
           // hay forma de recuperarla salvo editando settings.json a mano.
-          ocultas ? el('button', {
+          // Plegado no se pinta: el grupo entero esta recogido a proposito y
+          // esta linea lo volveria a abrir a dos renglones.
+          !plegado && ocultas ? el('button', {
             class: 'lateral__item lateral__item--tenue',
             title: 'Volver a mostrar las listas escondidas',
             onClick: () => mostrarTodas(s.id),

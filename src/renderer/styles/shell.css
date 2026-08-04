@@ -104,6 +104,55 @@
   color: var(--texto);
 }
 
+/*
+ * El nombre del servicio ES el boton de plegar.
+ *
+ * Hereda la tipografia del titulo — mayusculas, peso y espaciado — en vez de
+ * traer la suya. Con estilo propio se leeria como un control distinto metido
+ * donde antes habia un rotulo, y lo que se quiere es lo contrario: que siga
+ * pareciendo el titulo de siempre y resulte que ademas se pulsa.
+ *
+ * El margen negativo compensa su propio relleno para que el texto quede a
+ * plomo con el de los otros grupos, que no llevan boton.
+ */
+.lateral__plegar {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 22px;
+  margin-left: -4px;
+  padding: 0 4px;
+  border-radius: var(--radio-1);
+  letter-spacing: inherit;
+  text-transform: inherit;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+.lateral__plegar:hover {
+  background: var(--hover);
+  color: var(--texto);
+}
+
+.lateral__plegar-flecha {
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 9px;
+  color: var(--texto-3);
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.lateral__plegar:hover .lateral__plegar-flecha {
+  color: var(--texto);
+}
+
+/* Plegado el grupo no dice que guarda dentro: el numero lo cuenta sin abrirlo. */
+.lateral__plegar-cuenta {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--texto-3);
+}
+
 .lateral__item {
   position: relative;
   display: flex;
