@@ -139,7 +139,7 @@ function cerrar() {
   if (settings) settings.save();
   if (library) library.persist();
   if (collections) collections.store.save();
-  // Sin esto Windows deja la barra verde pegada al icono hasta que el hueco de
+  // Sin esto Windows deja el distintivo pegado al icono hasta que el hueco de
   // la barra de tareas se recicla, que puede tardar.
   taskbar.limpiar(mainWindow);
   bandeja.destruir();

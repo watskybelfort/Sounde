@@ -32,8 +32,8 @@ Si llevan tiempos, la línea que suena se resalta y pulsándola se salta ahí.
 
 **Windows.** Teclas multimedia por sesión de medios (la ficha con carátula que
 sale al pulsarlas es la de Sounde), botones sobre la miniatura de la barra de
-tareas, barra de progreso y distintivo sobre el icono, aviso al cambiar de
-canción, bandeja, y mini-player siempre encima.
+tareas, distintivo de estado sobre el icono, aviso al cambiar de canción,
+bandeja, y mini-player siempre encima.
 
 **Manejo.** Paleta de comandos con `Ctrl+K` que busca a la vez acciones y
 música, atajos para todo, temporizador de apagado con fundido, y panel de

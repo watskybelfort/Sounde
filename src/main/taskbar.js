@@ -7,8 +7,13 @@ const { glifo, distintivo } = require('./iconos');
  *
  *   - Botones sobre la miniatura de la ventana (anterior / play / siguiente),
  *     que salen al posar el raton sobre el icono.
- *   - La barra de progreso pintada sobre el propio icono.
  *   - Un distintivo con el estado, en la esquina del icono.
+ *
+ * Lo que NO pone, y no es un olvido: la barra de progreso sobre el icono
+ * (setProgressBar). Windows la pinta como la de una descarga, y un icono
+ * llenandose poco a poco se lee como "esto esta trabajando", no como "esto
+ * esta sonando". El progreso de la cancion ya esta en la ventana y en la
+ * miniatura, que es donde se busca.
  *
  * Todo esto se refresca desde el renderer, que es quien sabe lo que suena. Va
  * por `send` y no por `invoke`: son avisos, no preguntas, y llegan varias
@@ -34,19 +39,19 @@ function cargarIconos() {
 /**
  * Lo ultimo aplicado, para no repetir llamadas.
  *
- * setThumbarButtons rehace la barra entera cada vez y parpadea si se llama en
- * cada tick; setProgressBar cruza a la shell de Windows. Con la posicion
- * llegando cuatro veces por segundo, filtrar aqui no es optimizar de mas.
+ * setThumbarButtons rehace la barra entera cada vez y parpadea si se llama dos
+ * veces seguidas, y setOverlayIcon cruza a la shell de Windows. Los partes
+ * llegan varias veces por minuto, asi que filtrar aqui no es optimizar de mas.
  */
-let ultimo = { firma: null, progreso: null, marca: null };
+let ultimo = { firma: null, marca: null };
 
 function reiniciar() {
-  ultimo = { firma: null, progreso: null, marca: null };
+  ultimo = { firma: null, marca: null };
 }
 
 /**
  * `estado` viene del renderer:
- *   { hayPista, sonando, hayPrev, hayNext, posicion, duracion }
+ *   { hayPista, sonando, hayPrev, hayNext }
  */
 function aplicarEstado(win, estado, alMandar) {
   if (!win || win.isDestroyed() || process.platform !== 'win32') return;
@@ -55,7 +60,6 @@ function aplicarEstado(win, estado, alMandar) {
   const sonando = !!estado?.sonando;
 
   botones(win, { hayPista, sonando, hayPrev: !!estado?.hayPrev, hayNext: !!estado?.hayNext }, alMandar);
-  progreso(win, { hayPista, sonando, posicion: estado?.posicion, duracion: estado?.duracion });
   marca(win, { hayPista, sonando });
 }
 
@@ -92,27 +96,6 @@ function botones(win, { hayPista, sonando, hayPrev, hayNext }, alMandar) {
   ]);
 }
 
-function progreso(win, { hayPista, sonando, posicion, duracion }) {
-  // -1 apaga la barra. Dejar un 0 pintaria un rectangulo vacio sobre el icono,
-  // que se lee como "descargando algo y atascado".
-  if (!hayPista || !Number.isFinite(duracion) || duracion <= 0) {
-    if (ultimo.progreso !== 'apagada') {
-      ultimo.progreso = 'apagada';
-      win.setProgressBar(-1);
-    }
-    return;
-  }
-
-  const fraccion = Math.min(1, Math.max(0, (posicion || 0) / duracion));
-  const modo = sonando ? 'normal' : 'paused';
-  // Se compara por porcentaje entero: la barra del icono mide 40 pixeles, asi
-  // que refrescarla mas fino no cambia un solo pixel.
-  const clave = `${Math.round(fraccion * 100)}|${modo}`;
-  if (clave === ultimo.progreso) return;
-  ultimo.progreso = clave;
-  win.setProgressBar(fraccion, { mode: modo });
-}
-
 function marca(win, { hayPista, sonando }) {
   const cual = !hayPista ? null : sonando ? 'sonando' : 'pausa';
   if (cual === ultimo.marca) return;
@@ -129,11 +112,10 @@ function marca(win, { hayPista, sonando }) {
   );
 }
 
-/** Al cerrar hay que limpiar o Windows deja la barra verde pegada al icono. */
+/** Al cerrar hay que limpiar o el distintivo se queda pegado al icono. */
 function limpiar(win) {
   if (!win || win.isDestroyed() || process.platform !== 'win32') return;
   try {
-    win.setProgressBar(-1);
     win.setOverlayIcon(null, '');
     win.setThumbarButtons([]);
   } catch { /* la ventana se estaba yendo */ }
