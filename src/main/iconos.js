@@ -75,6 +75,44 @@ const LOGO_GORDO = () => [
   rect(0.725, 0.455, 0.09, 0.09),
 ];
 
+/** Por debajo de aqui las barras se cuadran con la rejilla de pixeles. */
+const MENUDO = 24;
+
+/** Las alturas de las cinco barras, en fraccion del lado. */
+const ALTURAS = [0.09, 0.33, 0.57, 0.33, 0.09];
+
+/**
+ * Las mismas barras, pero calculadas en pixeles enteros.
+ *
+ * A 16 pixeles las del dibujo grande miden 1,44 y empiezan a 2,96: cada una
+ * cae a caballo entre dos pixeles, el suavizado las reparte en dos medias
+ * tintas, y las cinco juntas se leen como una mancha con un bulto en medio.
+ * Es el unico tamaño donde el icono no se entendia.
+ *
+ * Aqui los bordes se colocan sobre la rejilla, asi que cada barra cubre sus
+ * pixeles enteros y ninguno a medias: el suavizado no tiene nada que repartir
+ * y salen limpias. El paso es uniforme —el dibujo grande abre mas los huecos
+ * de fuera que los de dentro— porque a un pixel de hueco no se le puede quitar
+ * nada, y mantenerlo igual en los cuatro es lo que deja la marca simetrica.
+ *
+ * El cuadrado de fondo NO se cuadra: sus esquinas redondeadas viven del
+ * suavizado y sin el se vuelven un escalon.
+ */
+function logoMenudo(tam) {
+  const ancho = Math.max(1, Math.round(tam * 0.09));
+  const paso = ancho + Math.max(1, Math.round(tam * 0.055));
+  const centro = tam / 2;
+  // La barra del medio queda centrada y las otras cuatro caen a dos pasos.
+  const primera = Math.round(centro - paso * 2 - ancho / 2);
+
+  return ALTURAS.map((fraccion, i) => {
+    const alto = Math.max(1, Math.round(tam * fraccion));
+    const x = primera + paso * i;
+    const y = Math.round(centro - alto / 2);
+    return rect(x / tam, y / tam, ancho / tam, alto / tam);
+  });
+}
+
 /**
  * Glifo blanco sobre transparente, con las dos resoluciones que pide Windows.
  *
@@ -99,12 +137,14 @@ function marca() {
  * desaparece en una barra de tareas oscura, que es la de casi todo el mundo,
  * y uno de solo barras finas se vuelve ilegible a 16 pixeles. El degradado
  * es leve: a 16 no se ve, y a 256 evita que parezca un rectangulo de pintura.
+ *
+ * De 24 para abajo las barras se cuadran con la rejilla; ver logoMenudo.
  */
 function iconoApp(tam) {
   const marco = rectRedondo(0.045, 0.045, 0.91, 0.91, 0.22);
   return componer(tam, [
     { formas: [marco], color: (x, y) => degradado(ACENTO, ACENTO_HONDO, (x + y * 2) / 3) },
-    { formas: LOGO_GORDO(), color: [255, 255, 255] },
+    { formas: tam <= MENUDO ? logoMenudo(tam) : LOGO_GORDO(), color: [255, 255, 255] },
   ]);
 }
 
