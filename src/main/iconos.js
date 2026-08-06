@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require('node:fs');
+const path = require('node:path');
 const { nativeImage } = require('electron');
 
 /**
@@ -115,6 +117,44 @@ function degradado(a, b, t) {
   ];
 }
 
+/** Lo devuelto por iconoVentana(), que no cambia en toda la ejecucion. */
+let deVentana = null;
+
+/**
+ * El icono que lleva la ventana: barra de tareas, Alt+Tab y miniatura.
+ *
+ * Instalado no haria falta —la ventana hereda el icono del .exe, que le pone
+ * el instalador—, pero en desarrollo (`npm start`) el ejecutable es el de
+ * Electron y sin esto Sounde se abre con el atomo gris de fabrica.
+ *
+ * Se devuelve la RUTA del .ico, no la imagen. `nativeImage.createFromPath` de
+ * un .ico multitamaño se queda con la representacion de 256 y todo lo demas
+ * sale de reescalarla; pasandole la ruta, Windows abre el contenedor y coge de
+ * dentro el tamaño exacto que pide cada sitio, que es para lo que se generan
+ * los siete de `npm run icono`.
+ *
+ * Si el archivo no esta —build/ es material de compilacion y no viaja dentro
+ * del paquete— se dibuja con el mismo rasterizador. Sale igual, solo que sin
+ * los tamaños grandes, que en un paquete real ya vienen del .exe.
+ */
+function iconoVentana() {
+  if (deVentana) return deVentana;
+
+  const archivo = path.join(__dirname, '..', '..', 'build', 'icon.ico');
+  if (fs.existsSync(archivo)) {
+    deVentana = archivo;
+    return deVentana;
+  }
+
+  // 32 de base y 64 para pantallas al 200%. Los tamaños grandes se dejan
+  // fuera a proposito: rasterizar 256 cuesta decimas de segundo y esto se
+  // ejecuta justo antes de abrir la ventana.
+  const img = nativeImage.createFromBitmap(iconoApp(32), { width: 32, height: 32 });
+  img.addRepresentation({ scaleFactor: 2, width: 64, height: 64, buffer: iconoApp(64) });
+  deVentana = img;
+  return deVentana;
+}
+
 /** Distintivo para el icono de la barra de tareas: disco con el glifo calado. */
 function distintivo(nombre) {
   const receta = DISTINTIVOS[nombre];
@@ -227,4 +267,4 @@ function triangulo(ax, ay, bx, by, cx, cy) {
   };
 }
 
-module.exports = { glifo, distintivo, marca, iconoApp };
+module.exports = { glifo, distintivo, marca, iconoApp, iconoVentana };

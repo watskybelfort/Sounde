@@ -4,6 +4,8 @@ const path = require('node:path');
 const { execFile } = require('node:child_process');
 const { BrowserWindow, nativeTheme, screen } = require('electron');
 
+const { iconoVentana } = require('./iconos');
+
 const ROOT = path.join(__dirname, '..', '..');
 const NATIVE_SCRIPT = path.join(ROOT, 'tools', 'acrylic-native.ps1');
 
@@ -52,6 +54,7 @@ function createMainWindow(settings) {
     titleBarStyle: 'hidden',
     autoHideMenuBar: true,
     title: 'Sounde',
+    icon: iconoVentana(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
