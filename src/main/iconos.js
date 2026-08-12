@@ -163,27 +163,37 @@ let deVentana = null;
 /**
  * El icono que lleva la ventana: barra de tareas, Alt+Tab y miniatura.
  *
- * Instalado no haria falta —la ventana hereda el icono del .exe, que le pone
- * el instalador—, pero en desarrollo (`npm start`) el ejecutable es el de
- * Electron y sin esto Sounde se abre con el atomo gris de fabrica.
- *
  * Se devuelve la RUTA del .ico, no la imagen. `nativeImage.createFromPath` de
  * un .ico multitamaño se queda con la representacion de 256 y todo lo demas
  * sale de reescalarla; pasandole la ruta, Windows abre el contenedor y coge de
  * dentro el tamaño exacto que pide cada sitio, que es para lo que se generan
  * los siete de `npm run icono`.
  *
- * Si el archivo no esta —build/ es material de compilacion y no viaja dentro
- * del paquete— se dibuja con el mismo rasterizador. Sale igual, solo que sin
- * los tamaños grandes, que en un paquete real ya vienen del .exe.
+ * Hay que mirar en dos sitios porque el .ico no vive donde uno cree:
+ *
+ *   - En desarrollo esta en build/, que es material de compilacion.
+ *   - Empaquetado, build/ NO viaja dentro del asar, asi que esa ruta no
+ *     existe. La copia buena la deja el instalador en resources/icon.ico, que
+ *     es la que usan las asociaciones de archivo.
+ *
+ * Mirar solo en build/ era la causa de que la app instalada saliera en la
+ * barra de tareas con el atomo gris de Electron: se caia al dibujo de abajo,
+ * que solo trae 32 y 64, y Windows acababa cogiendo el icono de fabrica. La
+ * teoria de que "instalado hereda el icono del .exe" no se cumple: el
+ * ejecutable lo lleva bien y aun asi la ventana salia con el de Electron.
  */
 function iconoVentana() {
   if (deVentana) return deVentana;
 
-  const archivo = path.join(__dirname, '..', '..', 'build', 'icon.ico');
-  if (fs.existsSync(archivo)) {
-    deVentana = archivo;
-    return deVentana;
+  const candidatos = [
+    path.join(__dirname, '..', '..', 'build', 'icon.ico'),
+    process.resourcesPath ? path.join(process.resourcesPath, 'icon.ico') : null,
+  ];
+  for (const archivo of candidatos) {
+    if (archivo && fs.existsSync(archivo)) {
+      deVentana = archivo;
+      return deVentana;
+    }
   }
 
   // 32 de base y 64 para pantallas al 200%. Los tamaños grandes se dejan
