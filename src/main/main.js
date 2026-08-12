@@ -140,10 +140,22 @@ function main() {
  * com.mxrningstar.sounde -> node_modules\electron\dist\electron.exe con
  * displayName "Electron". Arrancar la app en desarrollo una sola vez bastaba
  * para romper el icono de la instalada.
+ *
+ * Y esa atadura no se suelta: no la quitan ni vaciar la cache de iconos, ni
+ * reiniciar la shell, ni borrar las cachES del resolvedor del menu de inicio.
+ * Por eso la identidad lleva sufijo: '.app' es una cadena que Windows no habia
+ * visto nunca, asi que la resuelve de cero contra el ejecutable instalado. Se
+ * comprobo antes de elegirla — con una identidad nueva el icono sale bien a la
+ * primera, con la vieja sale el atomo pase lo que pase.
+ *
+ * El appId del instalador NO se toca a proposito: de el cuelgan las
+ * asociaciones de archivo y la entrada de desinstalacion, y cambiarlo
+ * obligaria a desinstalar, lo que se llevaria por delante el "abrir con
+ * Sounde" de los .mp3.
  */
 function identidadShell() {
   const base = 'com.mxrningstar.sounde';
-  return app.isPackaged ? base : `${base}.dev`;
+  return app.isPackaged ? `${base}.app` : `${base}.dev`;
 }
 
 /**
