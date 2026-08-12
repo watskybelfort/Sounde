@@ -38,7 +38,7 @@ let saliendo = false;
 const pendientes = [];
 
 function main() {
-  app.setAppUserModelId('com.mxrningstar.sounde');
+  app.setAppUserModelId(identidadShell());
   app.commandLine.appendSwitch('force_high_performance_gpu');
 
   // Los privilegios de esquema hay que declararlos antes de que Chromium
@@ -123,6 +123,27 @@ function main() {
     saliendo = true;
     cerrar();
   });
+}
+
+/**
+ * La identidad de la app para la shell de Windows.
+ *
+ * En desarrollo se usa OTRA a proposito. El AppUserModelId es lo que Windows
+ * usa para decidir el icono y el nombre del boton de la barra de tareas, y lo
+ * resuelve contra el ultimo ejecutable que reclamo esa identidad. `npm start`
+ * corre sobre electron.exe: si reclamara la misma que la app instalada, la
+ * deja apuntando ahi, y a partir de ese momento la Sounde INSTALADA sale en la
+ * barra con el atomo gris y el nombre "Electron" por mucho que su ventana, su
+ * .exe y sus accesos directos lleven el icono bueno.
+ *
+ * No es hipotetico: el registro de esta maquina tenia
+ * com.mxrningstar.sounde -> node_modules\electron\dist\electron.exe con
+ * displayName "Electron". Arrancar la app en desarrollo una sola vez bastaba
+ * para romper el icono de la instalada.
+ */
+function identidadShell() {
+  const base = 'com.mxrningstar.sounde';
+  return app.isPackaged ? base : `${base}.dev`;
 }
 
 /**
