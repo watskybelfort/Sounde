@@ -34,6 +34,8 @@ let library = null;
 let collections = null;
 /** Distingue "cerrar la ventana" de "salir del programa" con la bandeja puesta. */
 let saliendo = false;
+/** Archivos que llegaron de un doble clic antes de que hubiera ventana. */
+const pendientes = [];
 
 function main() {
   app.setAppUserModelId('com.mxrningstar.sounde');
@@ -44,13 +46,16 @@ function main() {
   registerSchemes();
 
   app.on('second-instance', (_e, argv) => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    // Escondida en la bandeja, restore() no la saca: hay que mostrarla. Sin
-    // esto, volver a abrir Sounde desde el menu de inicio no hace nada visible.
-    if (!mainWindow.isVisible()) mainWindow.show();
-    mainWindow.focus();
-    abrirArchivos(archivosDeArgv(argv));
+    const archivos = archivosDeArgv(argv);
+    // El doble clic puede caer mientras la ventana todavia se esta creando.
+    // Guardarlos es la diferencia entre que la cancion suene o se pierda en
+    // silencio, que es el peor final posible para un doble clic.
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      pendientes.push(...archivos);
+      return;
+    }
+    alFrente(mainWindow);
+    abrirArchivos(archivos);
   });
 
   app.whenReady().then(async () => {
@@ -95,7 +100,7 @@ function main() {
     }
 
     mainWindow.webContents.once('did-finish-load', () => {
-      abrirArchivos(archivosDeArgv(process.argv));
+      abrirArchivos([...archivosDeArgv(process.argv), ...pendientes.splice(0)]);
       escaneoInicial();
     });
 
@@ -118,6 +123,29 @@ function main() {
     saliendo = true;
     cerrar();
   });
+}
+
+/**
+ * Trae la ventana al frente de verdad.
+ *
+ * Windows no deja que un programa que esta de fondo se ponga delante por las
+ * buenas: ese permiso lo tiene el proceso que el usuario acaba de lanzar (la
+ * segunda instancia, que ya se murio), no el nuestro. Por eso focus() a secas
+ * puede no hacer nada y la cancion acaba sonando detras del Explorador, que
+ * desde fuera se ve igual que si el doble clic no hubiera funcionado. Pasar un
+ * instante por TOPMOST si lo consigue, porque eso no pide el primer plano.
+ */
+function alFrente(win) {
+  if (win.isMinimized()) win.restore();
+  // Escondida en la bandeja, restore() no la saca: hay que mostrarla. Sin
+  // esto, volver a abrir Sounde desde el menu de inicio no hace nada visible.
+  if (!win.isVisible()) win.show();
+
+  // El mini reproductor ya flota a proposito: ahi no hay nada que restaurar.
+  const flotaba = win.isAlwaysOnTop();
+  if (!flotaba) win.setAlwaysOnTop(true);
+  win.focus();
+  if (!flotaba) win.setAlwaysOnTop(false);
 }
 
 /**
