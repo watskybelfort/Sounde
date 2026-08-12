@@ -224,4 +224,11 @@ async function abrirArchivos(files) {
   const tracks = await library.addFiles(await expandirListas(files));
   if (!tracks.length) return;
   mainWindow.webContents.send('app:open-files', tracks.map(paraCliente));
+
+  // Abrir desde el Explorador mete la cancion en la biblioteca igual que
+  // soltarla en la ventana, asi que hay que avisar de que cambio. Sin esto
+  // sonaba pero no salia en la lista hasta reiniciar la app: parecia que
+  // abrirla con Sounde ya puesto "no habia hecho nada".
+  require('./servicios').olvidarIndice();
+  mainWindow.webContents.send('library:changed', { total: library.size() });
 }
